@@ -121,3 +121,70 @@
 - 「计数 / 分组 / 透视」三大数据处理模式都手写过一遍
 
 下一步进入 SQL 入门,有 Python 基础打底,SQL 学起来应该会很自然。
+
+---
+
+## Day 4: SQL 入门 —— SELECT / WHERE / ORDER BY / LIMIT
+
+### 今日完成
+- 环境搭建:DuckDB + jupysql,直接查询 csv,无需建表
+- 用 Pandas 生成 200 行(后扩展到 500 行覆盖全年)的练习数据 `data/sales.csv`
+- SQL 基础四件套:SELECT(选列)、WHERE(过滤)、ORDER BY(排序)、LIMIT(限量)
+- 列别名 AS、列表达式计算、DISTINCT 去重
+- 字符串模糊匹配:LIKE / ILIKE
+- 多条件组合:AND / OR / IN / BETWEEN / NOT IN
+- 完成 10 道练习题(基于 sales.csv)
+
+### 学到的关键点
+- **SQL 字符串用单引号 `'...'`,双引号 `"..."` 是给列名/表名用的** —— 别弄混
+- **NULL 比较必须用 `IS NULL` / `IS NOT NULL`**,`= NULL` 永远返回 0 行(SQL 最大的坑)
+- **DuckDB 可以直接 `SELECT * FROM 'xxx.csv'`** —— 不需要建表导入,极适合学习
+- **SQL 的执行顺序**(必背):
+  - 书写顺序:`SELECT → FROM → WHERE → ORDER BY → LIMIT`
+  - 执行顺序:`FROM → WHERE → SELECT → ORDER BY → LIMIT`
+  - 推论:WHERE 里不能用 SELECT 起的别名;ORDER BY 里可以用别名
+- **多关键字排序**:`ORDER BY col1 ASC, col2 DESC` —— 和 Day 3 Python 的 `sorted(key=lambda x: (a, -b))` 完全对应
+- **LIKE 大小写敏感**:跨大小写匹配用 `ILIKE 'm%'` 或 `LOWER(col) LIKE 'm%'`
+- **Top N 模式**:`ORDER BY xxx DESC LIMIT N` —— SQL 面试最高频的固定写法
+- **返回 0 行的排查思路**:先验证数据范围(MIN/MAX/COUNT 看一眼),再怀疑 SQL 写错
+
+### 我的弱点清单(持续更新)
+1. ~~习惯用 `for i in range(len(lst))`~~ ✅
+2. ~~简单过滤循环应优先用列表推导式~~ ✅
+3. ~~字典推导式语法~~ ✅
+4. 查重该用 set(O(1) 查找),计数该用 dict
+5. 经典面试题应先想 O(n) 解法,而不是上来就双重循环
+6. 永远不要假设输入数据是有序的 —— 需要排序就显式调 `sorted()`
+7. 用 `min()` / `max()` 替代 if/else 取小取大
+8. 变量名不要和外层变量重名
+9. 优先用 Python 内置函数:`abs()`、`max()`、`zip()` 等
+10. Python 排序是稳定的 —— 多次 sorted 可以实现复杂多关键字排序
+11. 可读性 > 优雅 —— 不要为了一行而损害代码可读性
+12. **写 SQL 时再看一眼题目要求的列是哪几个**(Day 4 题 2、8 教训:两道题都因为漏看 SELECT 列错了)
+13. **SQL 返回 0 行的排查思路**:先看数据范围,再怀疑查询(Day 4 题 6)
+14. **`LIKE` 大小写敏感**,不确定大小写用 `ILIKE` 或 `LOWER()`
+
+### 卡住/印象深的题
+- 题 2、题 8:**都是 SELECT 列没看仔细**,WHERE 写对了但选错列 —— 这是一个习惯性问题,以后写 SQL 必须养成"先确认输出列"的检查习惯
+- 题 6:SQL 完全正确但返回 0 行,**学到一个重要教训:0 行不一定是 SQL 错,可能数据本来就没有**。养成"先用 MIN/MAX/COUNT 摸清数据范围"的习惯
+- 题 10:三个 WHERE 条件 + 排序 + 限量串得很顺,实战感受到 SQL 的简洁性
+
+### 概念顿悟
+- **SQL ↔ Python 翻译表**(继续扩充):
+
+  | 操作 | Python 列表推导 | SQL |
+  |------|----------------|-----|
+  | 取所有 | `[row for row in data]` | `SELECT * FROM data` |
+  | 过滤 | `[row for row in data if row['x'] > 100]` | `WHERE x > 100` |
+  | 选列 | `[row['name'] for row in data]` | `SELECT name FROM data` |
+  | 计算列 | `[row['x'] * 1.13 for row in data]` | `SELECT x * 1.13 FROM data` |
+  | 多条件 | `if a > 0 and b in [...]` | `WHERE a > 0 AND b IN (...)` |
+  | 排序 | `sorted(data, key=lambda r: r['x'])` | `ORDER BY x` |
+  | 排序+降序 | `sorted(data, key=lambda r: -r['x'])` | `ORDER BY x DESC` |
+  | 多关键字排序 | `sorted(..., key=lambda r: (r['a'], -r['b']))` | `ORDER BY a ASC, b DESC` |
+  | 取前 N | `sorted(...)[:5]` | `LIMIT 5` |
+  | 去重 | `set(...)` | `SELECT DISTINCT` |
+  | 模糊匹配 | `r['x'].startswith('M')` | `WHERE x LIKE 'M%'` |
+
+- **SQL 比 Python 列表推导更简洁**:Day 3 的「过滤 + 排序 + 提取」三步在 SQL 里是 SELECT + WHERE + ORDER BY 三个子句,可读性极高
+- **核心顿悟**:SQL 不是"另一门新语言",而是 **「在 Python 里用列表推导处理数据的思路 + 声明式语法的包装」**。我前 3 天写的每一行列表推导,SQL 里都有对应的写法
