@@ -188,3 +188,78 @@
 
 - **SQL 比 Python 列表推导更简洁**:Day 3 的「过滤 + 排序 + 提取」三步在 SQL 里是 SELECT + WHERE + ORDER BY 三个子句,可读性极高
 - **核心顿悟**:SQL 不是"另一门新语言",而是 **「在 Python 里用列表推导处理数据的思路 + 声明式语法的包装」**。我前 3 天写的每一行列表推导,SQL 里都有对应的写法
+
+---
+
+## Day 5: SQL 聚合 —— COUNT / SUM / AVG / GROUP BY / HAVING
+
+### 今日完成
+- 聚合函数:COUNT / SUM / AVG / MIN / MAX,以及 ROUND 修饰
+- COUNT 的三种形态:`COUNT(*)` / `COUNT(列)` / `COUNT(DISTINCT 列)`
+- GROUP BY 单列分组、多列分组
+- HAVING 对分组结果过滤
+- WHERE + HAVING 组合使用
+- 聚合结果参与计算(如 `SUM(total) / COUNT(*)`)
+- 完成 10 道练习题 + 附加思考题(基于 500 行全年版 sales.csv)
+
+### 学到的关键点
+- **COUNT 三形态的区别**:
+  - `COUNT(*)` —— 所有行(含 NULL)
+  - `COUNT(列)` —— 该列非 NULL 的行数
+  - `COUNT(DISTINCT 列)` —— 不重复值的数量(极常用:有多少个不重复客户/产品)
+- **GROUP BY 黄金法则**:SELECT 里出现的列,要么在 GROUP BY 里,要么被聚合函数包裹
+  - 附加题验证了这一点:`SELECT country, product, SUM(total) ... GROUP BY country` 错在 product 既没分组也没聚合
+- **WHERE vs HAVING(面试必考)**:
+  - `WHERE` —— 分组**之前**过滤**原始行**,不能用聚合函数
+  - `HAVING` —— 分组**之后**过滤**分组结果**,可以用聚合函数
+- **完整子句执行顺序**(必背):
+  `FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT`
+- **别名可用性规则**(今天的核心教训,见下方):
+
+  | 子句 | 能用 SELECT 别名吗 | 原因 |
+  |------|-------------------|------|
+  | `WHERE` | ❌ 不能 | 在 SELECT 之前执行 |
+  | `GROUP BY` | ⚠️ 部分数据库可以 | 在 SELECT 之前执行 |
+  | `HAVING` | ⚠️ DuckDB/MySQL 容忍,PostgreSQL 等会报错 | 在 SELECT 之前执行 |
+  | `ORDER BY` | ✅ 可以 | 在 SELECT 之后执行 |
+
+  **口诀:ORDER BY 之前的子句都别用别名,ORDER BY 可以用别名**
+
+### 我的弱点清单(持续更新)
+1-3. ~~Python 风格相关~~ ✅ 已全部改进
+4. 查重该用 set,计数该用 dict
+5. 经典面试题先想 O(n) 解法
+6. 永远不要假设输入数据有序,需要排序就显式 `sorted()`
+7. 用 `min()` / `max()` 替代 if/else 取大取小
+8. 变量名不要和外层变量重名
+9. 优先用 Python 内置函数
+10. Python 排序是稳定的
+11. 可读性 > 优雅
+12. 写 SQL 时再看一眼题目要求的列
+13. SQL 返回 0 行先查数据范围再怀疑查询
+14. `LIKE` 大小写敏感,不确定时用 `ILIKE` / `LOWER()`
+15. **`HAVING` 里写聚合函数本身(`SUM(...)`/`COUNT(*)`),不要用 SELECT 的别名** —— DuckDB 容忍,但 PostgreSQL 等会报错(高频面试陷阱)
+16. **别名可用性规则**:`ORDER BY` 能用别名,`WHERE`/`GROUP BY`/`HAVING` 不能用
+17. **SELECT 最后一列后面不要加多余逗号** —— DuckDB 容忍,换数据库会报错
+
+### 卡住/印象深的题
+- 题 7、8、10:三道题都犯了同一个错——**`HAVING` 里用了 SELECT 的别名**。DuckDB 容忍所以输出"看起来对",但这是坏习惯,换到 PostgreSQL 会直接报错。从今天起强制自己 HAVING 里写 `SUM(...)` / `COUNT(*)`
+- 题 7:还发现 SELECT 末尾多了个逗号,DuckDB 没报错但其他数据库会
+- 题 9(二维分组):一行 `GROUP BY country, category` 解决了 Day 3 第 10 题十几行 Python 嵌套 dict 的工作 —— 强烈感受到 SQL 在聚合统计上的威力
+- 附加思考题:答对了,GROUP BY 黄金法则理解到位
+
+### 概念顿悟
+- **聚合统计是 SQL 的主场**:Day 3 写十几行 Python 嵌套 dict 做的二维透视,SQL 用 `GROUP BY a, b` 一行搞定,代码量约为 Python 的 1/10
+- **执行顺序决定一切**:WHERE/HAVING 能不能用聚合函数、能不能用别名,本质都由「子句执行顺序」决定。理解了执行顺序,这些规则就不用死记
+- **数据库的"容忍"是双刃剑**:DuckDB 容忍 HAVING 用别名、容忍多余逗号,写起来方便,但会养成在标准 SQL / 面试 / 其他数据库会出错的坏习惯。**学习阶段要主动按最严格的标准写**
+
+### SQL ↔ Python 翻译表(Day 5 扩充)
+
+| 操作 | Python | SQL |
+|------|--------|-----|
+| 计数 | `counts[x] = counts.get(x,0)+1` | `GROUP BY x ... COUNT(*)` |
+| 分组求和 | `groups[k] += v` (defaultdict) | `GROUP BY k ... SUM(v)` |
+| 二维透视 | 嵌套 dict 累加 | `GROUP BY a, b ... SUM(v)` |
+| 去重计数 | `len(set(...))` | `COUNT(DISTINCT ...)` |
+| 分组后过滤 | 先聚合再 `if` 筛选 | `HAVING` |
+| Top N | `sorted(...)[:N]` | `ORDER BY ... DESC LIMIT N` |
