@@ -229,6 +229,55 @@
 
 ---
 
+## Day 8: SQL JOIN(多表连接)
+
+### 今日完成
+- 跟练:造练习表 customers/countries → INNER / LEFT / RIGHT / FULL JOIN → 链式 JOIN
+- 完成 10 道练习题,8 道完全正确,题 6 有 bug,题 3 跳过验证步骤
+
+### 学到的关键点
+
+**四种 JOIN 总览**
+| JOIN 类型 | 保留谁 | 一句话 |
+|-----------|--------|--------|
+| `INNER JOIN` | 只保留两边都匹配上的 | 交集 |
+| `LEFT JOIN` | 左表全保留 + 右表匹配项,匹配不上填 NULL | 左表为主 |
+| `RIGHT JOIN` | 右表全保留(LEFT 的镜像) | 少用,可改写成 LEFT |
+| `FULL JOIN` | 两边全保留 | 并集 |
+
+- JOIN 三件套:`FROM 主表 别名` + `JOIN 表 别名` + `ON 连接条件`。
+- **核心心智模型**:JOIN 前先问「要不要保留匹配不上的行」——要 → LEFT/FULL,不要 → INNER。
+- `RIGHT JOIN` 几乎不用,任何 RIGHT 都能把两表对调写成 LEFT,LEFT 更符合「从主表出发」的阅读习惯。
+
+**LEFT JOIN + IS NULL = 反向筛选**
+- `LEFT JOIN ... WHERE 右表列 IS NULL` = 找「左表有、右表没有」的孤儿行。
+- 这和 Day 7 的 `NOT EXISTS` 是同一需求的两种写法,结果一致。
+- 注意是 `IS NULL` 不是 `= NULL`(NULL 比较必须用 IS)。
+
+**JOIN 后的 NULL —— 必须主动处理 ⚠️**
+- LEFT/FULL JOIN 后,匹配不上的地方是 NULL。直接 `GROUP BY` 会多出一个裸 `None` 组。
+- **结果里不该出现裸 NULL/None** —— 业务方看不懂。要么 INNER 排除,要么用 `COALESCE` 命名。
+- `COALESCE(a, b)`:返回第一个非 NULL 的值。`COALESCE(region, 'Unknown')` = region 有值用 region,NULL 则用 'Unknown'。
+- 统计「行数 / 订单数」用 `COUNT(*)`,不要用 `COUNT(某列)`(那列有 NULL 会少数)。
+
+**JOIN 膨胀 / fan-out ⚠️(今日最重要,粒度问题的危险形态)**
+- LEFT JOIN 规则:左表每一行,去右表找**所有**匹配行,有几行就复制成几行。
+- 若右表连接 key 不唯一(一对多 / 多对多),左表对应行会被复制膨胀。
+- 后果:对膨胀后结果做 `SUM`/`COUNT`,数值**虚高**,且查询不报任何错 —— 极隐蔽。
+- **铁律:JOIN 前先确认右表的连接 key 是否唯一。**
+
+### 卡住/印象深的题
+- **题 6**(真 bug):LEFT JOIN 后 `GROUP BY region` 多出一个 `None` 组(614918,还是最大那组)。题目要求「想清楚要不要算未匹配订单」,我直接用 LEFT 且没处理 NULL。正确:INNER 排除,或 `COALESCE(region,'Unknown')`。
+- **题 3**:用了 INNER JOIN,但跳过了「先查 sales 的 country 是否都在 countries 表」。实际上 sales 里有 `UK`,countries 表没有 → INNER 会悄悄丢掉 UK 订单。JOIN 前必须先验证 key 对齐。
+- **题 2**:`LIMIT 20` 前 10 行恰好都能匹配上,没看到 NULL 行,漏了题目要求的「观察」。`LIMIT` 看到的不代表全部。
+- **题 10**:现象抓对(C003 订单变两行),但解释用词不准 —— 不是「promo 有两个 C003 订单」,是「C003 这个 key 出现两次」;金额不是整体翻倍,是「C003 部分翻倍」。
+
+### 概念顿悟
+- 子查询是「查询套查询」,JOIN 是「表接表」,两者常可互换(题 4/5、题 8 同一需求双写法)。
+- JOIN 之后第一件事:问自己「有没有未匹配行?该排除还是 COALESCE 命名?」
+
+---
+
 ## 我的弱点清单(持续累计)
 
 ### 已克服 ✅
@@ -248,9 +297,9 @@
 12. 写 SQL 时再看一眼题目要求的列是哪几个(Day 4 题 2、8 教训)
 13. SQL 返回 0 行的排查思路:先看数据范围,再怀疑查询
 14. `LIKE` 大小写敏感,不确定大小写用 `ILIKE` 或 `LOWER()`
-15. `HAVING` 里写聚合函数本身,不要用 SELECT 的别名(高频面试陷阱)—— ⚠️ Day 7 题 9 复发,仍未克服
+15. `HAVING` 里写聚合函数本身,不要用 SELECT 的别名(高频面试陷阱)—— ⚠️ Day 7 题 9 复发;Day 8 未犯,有进步
 16. 别名可用性规则:`ORDER BY` 能用别名,`WHERE`/`GROUP BY`/`HAVING` 不能
-17. `SELECT` 最后一列后面不要加逗号 —— ⚠️ Day 7 题 4 复发,仍未克服
+17. `SELECT` 最后一列后面不要加逗号 —— ⚠️ Day 7 题 4 复发;Day 8 未犯,有进步
 18. **边界初始化**:维护极值的问题,用 `float('-inf')` / `float('inf')` 初始化
 19. **"碰巧对" ≠ "正确"**:写完代码自己造刁钻测试用例验证
 20. **`NOT IN` 遇 NULL 全军覆没**:子查询列可能有 NULL 时,永远用 `NOT EXISTS`
@@ -258,6 +307,10 @@
 22. **碰新数据先 `DESCRIBE`**:列名、列类型以 `DESCRIBE` 为准,不凭记忆也不轻信别人
 23. **相关子查询里不要画蛇添足加 `GROUP BY`**:`WHERE` 已锁定单组,再分组多余且可能报错
 24. **`%%sql` 必须在 cell 第一行**:前面有注释/空行会被当 Python 跑,报 SyntaxError
+25. **JOIN 后必查未匹配行(NULL)**:用 `COALESCE` 命名或决定排除,结果里别留裸 `None`
+26. **JOIN 膨胀(fan-out)**:JOIN 前确认右表连接 key 唯一,否则 `SUM`/`COUNT` 虚高且不报错
+27. **JOIN 前先验证两表 key 对齐情况**:别凭感觉选 INNER/LEFT,先查有没有匹配不上的
+28. **`LIMIT N` 看到的不是全部**:题目要求观察某现象时,主动构造能看到该现象的查询
 
 ---
 
@@ -284,8 +337,11 @@
 | 先算中间值再用 | `avg = sum(...)/len(...)` 后再比较 | 标量子查询 `WHERE x > (SELECT AVG ...)` |
 | 圈出一批 key 再捞 | `keys = {...}; [r for r in data if r['k'] in keys]` | `WHERE k IN (SELECT ...)` |
 | 判断是否存在 | `any(... for ... in ...)` | `EXISTS (SELECT 1 ...)` |
-| 判断不存在 | `not any(...)` / `all(... not ...)` | `NOT EXISTS (SELECT 1 ...)` |
+| 判断不存在 | `not any(...)` | `NOT EXISTS (SELECT 1 ...)` |
 | 两步聚合 | 先 groupby 出中间结果,再对结果聚合 | `FROM (SELECT ... GROUP BY ...) AS t` |
+| 按 key 关联两表 | `dict` 查表 / `pd.merge` | `JOIN ... ON 左.k = 右.k` |
+| 找左表有右表没有的 | `[x for x in a if x not in b]` | `LEFT JOIN ... WHERE 右.k IS NULL` 或 `NOT EXISTS` |
+| 空值兜底 | `a if a is not None else b` / `d.get(k, default)` | `COALESCE(a, b)` |
 
 ---
 
@@ -324,11 +380,31 @@
 - 题 8 "top-1 per group" 写得最干净
 
 ### 暴露的问题
-1. **旧弱点复发**:#15(HAVING 用别名)、#17(末尾逗号)都没克服,继续盯
+1. **旧弱点复发**:#15(HAVING 用别名)、#17(末尾逗号)
 2. **粒度概念新坑**:题 7 把订单表当客户表用,导致结果重复
 3. **相关子查询理解还不透**:题 4 多加了无意义的 GROUP BY
 
-### Day 8 预告
-- SQL:JOIN(INNER / LEFT / RIGHT / FULL),画图理解差异
-- 重点是「多表连接」—— 子查询是「查询套查询」,JOIN 是「表接表」,
-  两者常能互相替代,要建立对照直觉
+---
+
+## Day 8 当日小结
+
+### 数字
+- 10 道练习题,8 道完全正确,题 6 有 bug
+- GitHub 连续提交保持
+
+### 做得好的
+- 四种 JOIN 全部用对
+- 题 4/5、题 8 的 JOIN ↔ 子查询双写法干净利落
+- 题 8 清楚知道「谁该当左表」
+- #15、#17 旧弱点本次未犯,有进步
+
+### 暴露的问题
+1. **JOIN 后 NULL 未处理**:题 3/6/7 都碰到未匹配行,题 6 直接留了裸 `None` 组
+2. **跳过验证步骤**:题 3 没先查 key 对齐就选 INNER,会丢 UK 订单
+3. **LIMIT 误判**:题 2 没看到 NULL 行就以为做完了
+4. **解释用词不精确**:题 10 现象对、措辞糙
+
+### Day 9 预告
+- Python 函数进阶:默认参数、`*args`/`**kwargs`、装饰器基础、类型注解
+- 异常处理:try/except/finally、`with open()`、读写 CSV/JSON
+- 从 SQL 切回 Python,注意手感切换
