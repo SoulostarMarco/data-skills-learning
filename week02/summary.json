@@ -1,0 +1,14 @@
+{
+  "total_rows": 500,
+  "sample": {
+    "order_id": "O1000",
+    "customer_id": "C007",
+    "product": "Keyboard",
+    "category": "Accessory",
+    "quantity": "2",
+    "price": "1299",
+    "order_date": "2024-01-01",
+    "country": "Germany",
+    "total": "2598"
+  }
+}

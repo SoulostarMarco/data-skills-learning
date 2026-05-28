@@ -188,87 +188,58 @@
 
 ### 今日完成
 - 跟练:标量子查询 / IN 子查询 / EXISTS 相关子查询 / FROM 派生表 / NOT IN 的 NULL 陷阱
-- 完成 10 道练习题,7 道完全正确,3 道有 bug(题 4、题 7,及题 9 别名问题)
+- 完成 10 道练习题,7 道完全正确,3 道有 bug(题 4、题 7、题 9)
 
 ### 学到的关键点
 
 **子查询的四种位置**
 | 位置 | 形态 | 用途 |
 |------|------|------|
-| `WHERE total > (...)` | 标量子查询(1 行 1 列) | 把聚合值算出来再比较,解决「WHERE 不能用聚合函数」 |
-| `WHERE x IN (...)` | IN 子查询(1 列多行) | 先圈出一批 key,再捞这批 key 的明细 |
-| `WHERE EXISTS (...)` | 相关子查询 | 内层引用外层列,逐行判断「存不存在匹配行」 |
-| `FROM (...) AS t` | 派生表 | 把聚合结果当临时表,做「两步聚合」;派生表必须起别名 |
+| `WHERE total > (...)` | 标量子查询(1 行 1 列) | 把聚合值算出来再比较 |
+| `WHERE x IN (...)` | IN 子查询(1 列多行) | 先圈出一批 key,再捞明细 |
+| `WHERE EXISTS (...)` | 相关子查询 | 内层引用外层列,逐行判断「存不存在」 |
+| `FROM (...) AS t` | 派生表 | 把聚合结果当临时表做「两步聚合」;必须起别名 |
 
-- **标量子查询**只返回一个值,可当普通数字用。`WHERE` 拿它比较时,子查询里的 `AS 别名` 没意义,应删掉。
-- **EXISTS 心智模型**:`SELECT 1` 写什么不重要,EXISTS 只看子查询「有没有返回行」——有→TRUE,无→FALSE。
-- **相关子查询**内层引用了外层列,必须跟着外层逐行跑,数据量大时慢(Week 4 窗口函数有更优写法)。
-- **FROM 派生表**会逼你把同一段子查询写两遍 —— 这个痛点正是 Week 5 `CTE`(`WITH ... AS`)要解决的。
+- 标量子查询当普通数字用,`WHERE` 比较时子查询里的 `AS 别名` 没意义,应删掉。
+- EXISTS 只看子查询「有没有返回行」,`SELECT 1` 写什么不重要。
+- 相关子查询逐行跑、慢(Week 4 窗口函数有更优写法)。FROM 派生表的重复痛点正是 Week 5 CTE 要解决的。
 
-**NOT IN 的 NULL 陷阱 ⚠️(高频面试坑)**
-- `id NOT IN (101, 102, NULL)` 展开为 `id!=101 AND id!=102 AND id!=NULL`,而 `id != NULL` 结果是 `UNKNOWN` → 整个 AND 永远无法为 TRUE → **返回 0 行**。
-- `NOT EXISTS` 逐行判断「存不存在匹配」,NULL 不影响其他行,结果正确。
-- **铁律:子查询列可能有 NULL → 永远用 `NOT EXISTS`,不要用 `NOT IN`。**
+**NOT IN 的 NULL 陷阱 ⚠️**:`id NOT IN (101,102,NULL)` 含 NULL 时整个条件永远无法为 TRUE → 返回 0 行。**子查询列可能有 NULL 时永远用 `NOT EXISTS`。**
 
-**环境 / 工具**
-- `%%sql` 是 cell magic,**必须是 cell 第一行**,前面有注释/空行会被当 Python 跑,报 `SyntaxError`。
-- jupysql 渲染不出 `DESCRIBE` 时,用 `SELECT * FROM (DESCRIBE ...)` 包一层。
-- 视图:`CREATE OR REPLACE VIEW`,只存查询不存数据,永远和源 CSV 同步。
+**环境**:`%%sql` 必须在 cell 第一行;DESCRIBE 渲染不出用 `SELECT * FROM (DESCRIBE ...)` 包一层。
 
-### 卡住/印象深的题
-- **题 4**:相关子查询里多写 `GROUP BY` 画蛇添足;末尾多逗号(#17 复发);「高/低」要用 `CASE WHEN`。
-- **题 7**:`FROM sales` 导致客户重复——sales 是订单表,要「客户」就 `SELECT DISTINCT`。**粒度问题**。
-- **题 9**:`HAVING` 用了 SELECT 别名(#15 复发),标准写法 `HAVING SUM(total) > (...)`。
-
-### 概念顿悟
-- 子查询本质是「先算中间结果,再用它」——和 Python「先存变量再用」是同一回事。
-- 题目主体是「订单」还是「客户」,决定 `FROM` 谁、要不要 `DISTINCT` —— **粒度意识**是核心。
+### 卡住的题
+- 题 4:相关子查询多写 GROUP BY 画蛇添足;末尾多逗号(#17 复发);高/低用 `CASE WHEN`。
+- 题 7:`FROM sales` 致客户重复——要客户就 `DISTINCT`。**粒度问题**。
+- 题 9:HAVING 用了 SELECT 别名(#15 复发)。
 
 ---
 
 ## Day 8: SQL JOIN(多表连接)
 
 ### 今日完成
-- 跟练:造练习表 customers/countries → INNER / LEFT / RIGHT / FULL JOIN → 链式 JOIN
-- 完成 10 道练习题,8 道完全正确,题 6 有 bug,题 3 跳过验证步骤
+- 跟练:造 customers/countries 表 → INNER/LEFT/RIGHT/FULL JOIN → 链式 JOIN
+- 完成 10 道练习题,8 道完全正确,题 6 有 bug
 
 ### 学到的关键点
 
-**四种 JOIN 总览**
-| JOIN 类型 | 保留谁 | 一句话 |
-|-----------|--------|--------|
-| `INNER JOIN` | 只保留两边都匹配上的 | 交集 |
-| `LEFT JOIN` | 左表全保留 + 右表匹配项,匹配不上填 NULL | 左表为主 |
-| `RIGHT JOIN` | 右表全保留(LEFT 镜像) | 少用,可改写成 LEFT |
-| `FULL JOIN` | 两边全保留 | 并集 |
+**四种 JOIN**
+| 类型 | 保留谁 | 一句话 |
+|------|--------|--------|
+| INNER | 两边都匹配上的 | 交集 |
+| LEFT | 左表全保留 + 右表匹配项,不匹配填 NULL | 左表为主 |
+| RIGHT | 右表全保留(LEFT 镜像) | 少用 |
+| FULL | 两边全保留 | 并集 |
 
-- JOIN 三件套:`FROM 主表 别名` + `JOIN 表 别名` + `ON 连接条件`。
-- **核心心智模型**:JOIN 前先问「要不要保留匹配不上的行」——要→LEFT/FULL,不要→INNER。
+- 核心心智模型:JOIN 前先问「要不要保留匹配不上的行」——要→LEFT/FULL,不要→INNER。
+- **LEFT JOIN + WHERE 右表 IS NULL = 反向筛选**(找左表有右表没有的),等价于 `NOT EXISTS`。
+- **JOIN 后 NULL 必须主动处理**:别留裸 None,用 `COALESCE(列,'Unknown')` 命名或 INNER 排除;统计行数用 `COUNT(*)`。
+- **JOIN 膨胀 fan-out ⚠️**:右表连接 key 不唯一会把左表行复制膨胀,`SUM`/`COUNT` 虚高且不报错。**JOIN 前确认右表 key 唯一**。
 
-**LEFT JOIN + IS NULL = 反向筛选**
-- `LEFT JOIN ... WHERE 右表列 IS NULL` = 找「左表有、右表没有」的孤儿行。
-- 和 Day 7 的 `NOT EXISTS` 是同一需求的两种写法。注意 `IS NULL` 不是 `= NULL`。
-
-**JOIN 后的 NULL —— 必须主动处理 ⚠️**
-- LEFT/FULL JOIN 后匹配不上处是 NULL,直接 `GROUP BY` 会多出裸 `None` 组。
-- 结果里不该出现裸 NULL —— 要么 INNER 排除,要么 `COALESCE(列, 'Unknown')` 命名。
-- 统计行数用 `COUNT(*)`,不要用 `COUNT(某列)`(那列有 NULL 会少数)。
-
-**JOIN 膨胀 / fan-out ⚠️(粒度问题的危险形态)**
-- LEFT JOIN 规则:左表每行去右表找**所有**匹配行,有几行就复制成几行。
-- 右表连接 key 不唯一(一对多/多对多)→ 左表对应行被复制膨胀。
-- 后果:对膨胀结果做 `SUM`/`COUNT`,数值**虚高**,且不报任何错 —— 极隐蔽。
-- **铁律:JOIN 前先确认右表的连接 key 是否唯一。**
-
-### 卡住/印象深的题
-- **题 6**(真 bug):LEFT JOIN 后 `GROUP BY region` 多出 `None` 组,没做「要不要算未匹配订单」的决策。
-- **题 3**:用 INNER 但跳过「先查 country 是否对齐」——sales 有 UK、countries 没有,INNER 会悄悄丢 UK 订单。
-- **题 2**:`LIMIT 20` 前 10 行恰好都匹配上,没看到 NULL 行,漏了题目要求的观察。
-- **题 10**:现象抓对但用词糙——不是「promo 有两个 C003 订单」,是「C003 这个 key 出现两次」。
-
-### 概念顿悟
-- 子查询是「查询套查询」,JOIN 是「表接表」,两者常可互换。
-- JOIN 之后第一件事:问「有没有未匹配行?该排除还是 COALESCE 命名?」
+### 卡住的题
+- 题 6(真 bug):LEFT JOIN 后 `GROUP BY region` 多出 None 组,没做「要不要算未匹配订单」的决策。
+- 题 3:用 INNER 但没先验证 key 对齐,会悄悄丢 UK 订单。
+- 题 2:LIMIT 20 前 10 行恰好都匹配,没看到 NULL 行。
 
 ---
 
@@ -276,43 +247,53 @@
 
 ### 今日完成
 - 跟练:默认参数 / `*args`·`**kwargs` / 类型注解 / 装饰器 / try-except / 文件 IO
-- 完成 10 道练习题,7 道完全正确,题 5、题 7、题 10 有 bug
+- 完成 10 道练习题,7 道正确,题 5/7/10 有 bug
 
 ### 学到的关键点
+- **默认参数大坑**:`def f(lst=[])` 默认值只创建一次、调用间共享。用 `None` 再函数内新建。
+- `*args` 打包位置参数成 tuple,`**kwargs` 打包关键字参数成 dict;调用时 `f(*列表)`/`f(**字典)` 是拆包。
+- 类型注解只是「说明书」,不强制、不转换类型。
+- **装饰器 wrapper 两件事**:① 签名 `(*args, **kwargs)` ② 必须 `return` 原函数返回值。
+- 文件永远用 `with open(...)`;Windows 务必 `encoding='utf-8'`;读用 `for line in f` 流式,别 `readlines()`。
 
-**默认参数的可变对象大坑**
-- `def f(lst=[])`:默认的 `[]` 在**定义时只创建一次**,所有调用共享同一个 list。
-- 正确:默认值用 `None`,函数内 `if lst is None: lst = []` 每次新建。
-- 呼应 Day 1「list 是引用类型」。
-
-**`*args` / `**kwargs`**
-- `*args` 把多余位置参数打包成 tuple;`**kwargs` 把多余关键字参数打包成 dict。
-- 反向:调用时 `f(*列表)`、`f(**字典)` 是「拆包」。
-- 混用顺序固定:普通参数 → `*args` → `**kwargs`。
-
-**类型注解**
-- `def f(x: int) -> float` 只是「说明书」,**不强制、不做类型转换**。传错类型不报错。
-- 数据岗写注解是专业习惯。
-
-**装饰器**
-- 装饰器 = 接收函数、返回新函数,「不改原函数给它加功能」。`@deco` 等于 `f = deco(f)`。
-- wrapper 两件事不能忘:① 签名写 `(*args, **kwargs)` ② `return` 原函数的返回值。
-
-**异常处理 / 文件 IO**
-- `try/except/finally`,`finally` 无论成败都执行。`except (A, B)` 可一次抓多种。
-- 文件永远用 `with open(...)`,自动关闭(相当于自动 try/finally)。Windows 上务必写 `encoding='utf-8'`。
-- 读文件用 `for line in f` 流式逐行读,不要 `readlines()` 一次性读进内存。
-
-### 卡住/印象深的题
-- **题 5**:漏了「文件不存在返回 `[]`」——没包 `FileNotFoundError`,题目明说要测却没测。
-- **题 7**(真 bug):装饰器 wrapper 没 `return result`,导致原函数返回值变 None;且漏 `**kwargs`。
-- **题 10**(真 bug):用 `.get("country")` 想靠 `except KeyError` 抓缺字段——但 `.get()` 缺键返回 None 不抛错,导致 `None` 混进结果当 key。另有 `continue` 后写 `print` 的死代码。
-- **题 8**:空文件时 `total_sales / 0` 会崩,sales.csv 碰巧有数据没暴露。
+### 卡住的题
+- 题 5:漏了「文件不存在返回 []」——没包 FileNotFoundError。
+- 题 7(真 bug):装饰器 wrapper 没 return、漏 **kwargs。
+- 题 10(真 bug):用 `.get("country")` 想靠 `except KeyError` 抓缺字段,但 `.get()` 缺键返回 None 不抛错,致 None 混进结果;且 `continue` 后写死代码。
 
 ### 概念顿悟
-- `dict["k"]` 缺键抛 KeyError;`dict.get("k")` 缺键返回 None 不抛错——「安全访问」是双刃剑,想要它报错时它偏不报。
-- `process_sales` / `summarize` 手写的就是 SQL 的 `GROUP BY ... SUM` 和聚合——理解了底层。
-- 批量数据处理:坏数据该「跳过 + 记日志」,而不是崩溃,也不是默默丢。
+- `dict["k"]` 缺键抛 KeyError;`dict.get("k")` 缺键返回 None 不抛错——「安全访问」是双刃剑。
+- 手写分组求和 = SQL 的 `GROUP BY...SUM`。坏数据该「跳过 + 记日志」。
+
+---
+
+## Day 10: 异常处理 + 文件 IO(进阶)
+
+### 今日完成
+- 跟练:异常粒度 / try-except-else / 自定义异常 / 异常链 / logging / pathlib / csv·json 模块
+- 完成题 1-8(题 9 class 超纲跳过,题 10 综合大题拆解)
+
+### 学到的关键点
+- **只抓预期的异常**,别用裸 `except:`(会吞掉所有错误包括真 bug)。
+- `try/except/else/finally`:成功逻辑放 `else`,清理放 `finally`。
+- **自定义异常**:`class XxxError(Exception)`,让调用方能精准 `except` 业务错误。
+- **异常链**:`raise 业务异常 from e`,`e.__cause__` 保留根本原因。
+- **logging 替代 print**:级别 DEBUG<INFO<WARNING<ERROR<CRITICAL;坏数据「跳过 + `logging.warning` 记录」,不默默丢。
+- **pathlib**:`Path("..") / "data" / "x.csv"`,`.exists()`/`.name`/`.suffix`;跨平台,消除 Windows 斜杠问题。
+- **csv/json 模块**:`csv.DictReader` 每行读成 dict(值全是字符串!);**Windows 写 CSV 必须 `newline=""`**;`json.dump(..., ensure_ascii=False, indent=2)`。
+
+### 卡住的题
+- 题 5(真 bug):`open(data, ...)` 把 dict 列表当路径传给 open;且定义后没运行(没测=不知道炸)。写前该检查的是 `data` 非空,不是文件存在。
+- 题 8:文件不存在只 warning 没 `return`,继续往下会炸;`int(row[...])` 缺键抛 KeyError 但只抓了 ValueError。
+- 题 4:`return lst` 缩进进了 `with` 块内(碰巧对,该挪到 with 外);log 里 `line` 带换行符,该 `.strip()`。
+
+### 做得好的 / 进步
+- **题 7 把 Day 9 题 10 的三个坑全改对了**:用 `[]` 取值真抛 KeyError、`logging.warning` 而非 print、`continue` 放 log 之后没死代码。连续两天最实在的进步。
+- 题 1/2/3/6 干净;题 4 补上了 Day 9 漏的 FileNotFoundError。
+
+### 概念顿悟
+- 上下文管理器(`__enter__`/`__exit__`)是装饰器 timer 的「with 版」——但涉及 class,等学过 OOP 再碰。
+- 分支里(文件不存在、坏行)要 `return` 提前退出,别让代码继续往下走到会崩的地方。
 
 ---
 
@@ -335,25 +316,29 @@
 12. 写 SQL 时再看一眼题目要求的列是哪几个(Day 4 题 2、8 教训)
 13. SQL 返回 0 行的排查思路:先看数据范围,再怀疑查询
 14. `LIKE` 大小写敏感,不确定大小写用 `ILIKE` 或 `LOWER()`
-15. `HAVING` 里写聚合函数本身,不要用 SELECT 的别名(高频面试陷阱)—— ⚠️ Day 7 题 9 复发;Day 8/9 未犯
+15. `HAVING` 里写聚合函数本身,不要用 SELECT 的别名 —— ⚠️ Day 7 题 9 复发;Day 8/9/10 未犯
 16. 别名可用性规则:`ORDER BY` 能用别名,`WHERE`/`GROUP BY`/`HAVING` 不能
-17. `SELECT` 最后一列后面不要加逗号 —— ⚠️ Day 7 题 4 复发;Day 8/9 未犯
-18. **边界初始化**:维护极值的问题,用 `float('-inf')` / `float('inf')` 初始化 —— ✅ Day 9 题 2 活用
-19. **"碰巧对" ≠ "正确"**:写完代码自己造刁钻测试用例验证 —— ⚠️ Day 9 题 5/8/10 仍未养成习惯
+17. `SELECT` 最后一列后面不要加逗号 —— ⚠️ Day 7 题 4 复发;之后未犯
+18. **边界初始化**:维护极值用 `float('-inf')` / `float('inf')` —— ✅ Day 9 题 2 活用
+19. **"碰巧对" ≠ "正确"**:写完代码自己造刁钻测试用例验证 —— ⚠️ Day 9/10 反复冒头(题 5 定义不运行、题 8 没列边界),头号待克服
 20. **`NOT IN` 遇 NULL 全军覆没**:子查询列可能有 NULL 时,永远用 `NOT EXISTS`
 21. **粒度意识**:分清「订单粒度」和「客户粒度」,决定 `FROM` 谁、是否要 `DISTINCT`
-22. **碰新数据先 `DESCRIBE`**:列名、列类型以 `DESCRIBE` 为准,不凭记忆也不轻信别人
-23. **相关子查询里不要画蛇添足加 `GROUP BY`**:`WHERE` 已锁定单组,再分组多余且可能报错
-24. **`%%sql` 必须在 cell 第一行**:前面有注释/空行会被当 Python 跑,报 SyntaxError
-25. **JOIN 后必查未匹配行(NULL)**:用 `COALESCE` 命名或决定排除,结果里别留裸 `None`
-26. **JOIN 膨胀(fan-out)**:JOIN 前确认右表连接 key 唯一,否则 `SUM`/`COUNT` 虚高且不报错
-27. **JOIN 前先验证两表 key 对齐情况**:别凭感觉选 INNER/LEFT,先查有没有匹配不上的
-28. **`LIMIT N` 看到的不是全部**:题目要求观察某现象时,主动构造能看到该现象的查询
-29. **装饰器 wrapper 两件事**:① 签名写 `(*args, **kwargs)` ② 必须 `return` 原函数的返回值
-30. **`dict["k"]` vs `dict.get("k")`**:前者缺键抛 KeyError,后者缺键返回 None 不抛错;想靠 except 抓缺字段就别用 `.get()`
-31. **死代码**:`continue`/`return`/`break`/`raise` 之后的同层代码永远不执行
-32. **文件流式读取**:用 `for line in f` 逐行读,不要 `readlines()` 一次性读进内存
-33. **默认参数禁用可变对象**:不要 `def f(lst=[])`,用 `None` 再在函数内新建
+22. **碰新数据先 `DESCRIBE`**:列名、列类型以 DESCRIBE 为准
+23. **相关子查询里不要画蛇添足加 `GROUP BY`**:`WHERE` 已锁定单组
+24. **`%%sql` 必须在 cell 第一行**:前面有注释/空行会报 SyntaxError
+25. **JOIN 后必查未匹配行(NULL)**:用 `COALESCE` 命名或排除,别留裸 None
+26. **JOIN 膨胀(fan-out)**:JOIN 前确认右表连接 key 唯一,否则 SUM/COUNT 虚高
+27. **JOIN 前先验证两表 key 对齐情况**:别凭感觉选 INNER/LEFT
+28. **`LIMIT N` 看到的不是全部**:要观察现象就主动构造能看到它的查询
+29. **装饰器 wrapper 两件事**:① 签名 `(*args, **kwargs)` ② 必须 `return` 原函数返回值
+30. **`dict["k"]` vs `dict.get("k")`**:前者缺键抛 KeyError,后者缺键返回 None 不抛错;想靠 except 抓缺字段就用 `[]` —— ✅ Day 10 题 7 改对
+31. **死代码**:`continue`/`return`/`break`/`raise` 之后的同层代码永不执行 —— ✅ Day 10 题 7 避开
+32. **文件流式读取**:用 `for line in f`,不要 `readlines()`
+33. **默认参数禁用可变对象**:不要 `def f(lst=[])`,用 `None` 再函数内新建
+34. **写文件 vs 读文件**:`open()` 传的是路径不是数据;写文件前该检查的是「数据非空」而非「文件存在」,读文件前才检查存在性
+35. **异常分支要 `return` 提前退出**:文件不存在/坏行处理完要 `return`,别让代码继续往下走到会崩的地方
+36. **类型转换要显式**:`float(record["total"])` 主动转,别依赖后续运算「碰巧」报错来拦坏数据
+37. **写完必须运行**:定义了函数不调用 = 没测 = 不知道对不对(题 5 教训,#19 的具体形态)
 
 ---
 
@@ -377,15 +362,16 @@
 | 二维透视 | `defaultdict(lambda: defaultdict(int))` | `GROUP BY a, b ... SUM(...)` |
 | 组后过滤 | 先聚合再 `if` 筛选 | `HAVING SUM(...) > N` |
 | 三元/高低判断 | `'高' if x > avg else '低'` | `CASE WHEN x > avg THEN '高' ELSE '低' END` |
-| 先算中间值再用 | `avg = sum(...)/len(...)` 后再比较 | 标量子查询 `WHERE x > (SELECT AVG ...)` |
-| 圈出一批 key 再捞 | `keys = {...}; [r for r in data if r['k'] in keys]` | `WHERE k IN (SELECT ...)` |
-| 判断是否存在 | `any(... for ... in ...)` | `EXISTS (SELECT 1 ...)` |
+| 先算中间值再用 | `avg = sum(...)/len(...)` 后比较 | 标量子查询 `WHERE x > (SELECT AVG ...)` |
+| 圈出一批 key 再捞 | `keys={...}; [r for r in data if r['k'] in keys]` | `WHERE k IN (SELECT ...)` |
+| 判断是否存在 | `any(...)` | `EXISTS (SELECT 1 ...)` |
 | 判断不存在 | `not any(...)` | `NOT EXISTS (SELECT 1 ...)` |
-| 两步聚合 | 先 groupby 出中间结果,再对结果聚合 | `FROM (SELECT ... GROUP BY ...) AS t` |
+| 两步聚合 | 先 groupby 出中间结果再聚合 | `FROM (SELECT ... GROUP BY ...) AS t` |
 | 按 key 关联两表 | `dict` 查表 / `pd.merge` | `JOIN ... ON 左.k = 右.k` |
-| 找左表有右表没有的 | `[x for x in a if x not in b]` | `LEFT JOIN ... WHERE 右.k IS NULL` 或 `NOT EXISTS` |
+| 找左表有右表没有的 | `[x for x in a if x not in b]` | `LEFT JOIN ... WHERE 右.k IS NULL` / `NOT EXISTS` |
 | 空值兜底 | `a if a is not None else b` / `d.get(k, default)` | `COALESCE(a, b)` |
 | 分组求和(手写) | 遍历 + `d[k] = d.get(k,0) + v` | `GROUP BY k ... SUM(v)` |
+| 分组计数+求和 | `d[k]={'count':0,'sum':0}` 累加 | `GROUP BY k ... COUNT(*), SUM(v)` |
 
 ---
 
@@ -412,60 +398,28 @@
 
 ---
 
-## Day 7 当日小结
+## Day 10 当日小结
 
 ### 数字
-- 10 道练习题,7 道完全正确,3 道有 bug(题 4 / 题 7 / 题 9)
+- 题 1-8 实际做了 8 题,6 道正确(1/2/3/4/6/7),题 5 真 bug、题 8 健壮性漏洞
+- 题 9 class 超纲跳过(不计未完成),题 10 综合大题难度过高已拆解
 - GitHub 连续提交保持
 
 ### 做得好的
-- 题 6、题 10 主动写理解性注释
-- 题 2 思考题(并列最大值)答到点上
-- 题 8 "top-1 per group" 写得最干净
+- **题 7 把 Day 9 题 10 的三个坑全改对**:[]取值真抛 KeyError、logging 而非 print、continue 放 log 后
+- 题 4 补上了 Day 9 漏的 FileNotFoundError
+- 题 1/2/3/6 干净;自定义异常、异常链、pathlib、try-except-else 都掌握了
 
 ### 暴露的问题
-1. 旧弱点复发:#15(HAVING 用别名)、#17(末尾逗号)
-2. 粒度概念新坑:题 7 把订单表当客户表用
-3. 相关子查询理解还不透:题 4 多加了无意义的 GROUP BY
+1. **#19 又冒头**:题 5 定义函数后没运行(没测=不知道炸)、题 8 没列边界用例
+2. **return 位置/缺失**:题 4 return 进了 with 块、题 8 文件不存在没 return
+3. **碰巧对**:题 7/8 靠运算时碰巧报对异常类型拦住,不是主动 float() 转换防御
 
----
+### 难度反馈(已采纳)
+- 题 9(class/上下文管理器)超纲——学习计划里 OOP 还没排到,我硬塞不对,作废
+- 题 10 综合大题过重,已拆成 10a/10b/10c 小步骤
+- 经验:能直说「超纲/太难」是好事,出题难度曲线后续会更贴实际进度
 
-## Day 8 当日小结
-
-### 数字
-- 10 道练习题,8 道完全正确,题 6 有 bug
-- GitHub 连续提交保持
-
-### 做得好的
-- 四种 JOIN 全部用对
-- 题 4/5、题 8 的 JOIN ↔ 子查询双写法干净利落
-- #15、#17 旧弱点本次未犯,有进步
-
-### 暴露的问题
-1. JOIN 后 NULL 未处理:题 3/6/7 都碰到未匹配行,题 6 留了裸 None 组
-2. 跳过验证步骤:题 3 没先查 key 对齐就选 INNER
-3. LIMIT 误判:题 2 没看到 NULL 行就以为做完了
-
----
-
-## Day 9 当日小结
-
-### 数字
-- 10 道练习题,7 道完全正确,题 5 / 题 7 / 题 10 有 bug
-- GitHub 连续提交保持
-
-### 做得好的
-- 类型注解全程坚持,专业习惯
-- 题 2 用上 float('-inf')(#18 活用)
-- 题 9 retry 装饰器写得完整漂亮
-- 题 10 文字分析有数据岗思维
-
-### 暴露的问题
-1. **核心问题**:三个 bug 里两个都因「没造刁钻测试用例」——文件不存在、空文件、缺字段都没测(#19 仍未养成习惯)
-2. 装饰器 wrapper 漏 return 返回值、漏 **kwargs(题 7)
-3. .get() 不抛 KeyError,误以为能靠 except 抓缺字段(题 10)
-4. continue 后写死代码(题 10)
-
-### Day 10 预告
-- 异常处理 + 文件 IO 收尾,NumPy 入门
-- 重点盯弱点 #19:写完代码先想「怎么把它搞崩」,再动手测
+### Day 11 预告
+- NumPy 入门:数组创建、向量化、布尔索引、axis 参数
+- 这是 Pandas 的地基,也是「用 NumPy 算股票收益率/波动率」的前置
