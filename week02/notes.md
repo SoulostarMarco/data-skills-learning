@@ -704,3 +704,201 @@
 - Week 2 综合复习 + 阶段自测
 - 混合练习:Python(函数/异常/NumPy) + SQL(JOIN/子查询) 交叉出题
 - 检验 Week 2 六天学习成果,为 Week 3(Pandas 基础)做准备
+
+---
+
+## Day 12: Week 2 综合复习 —— 阶段自测
+
+### 今日完成
+- 回顾 Week 2 知识速查卡:SQL子查询四种位置/JOIN心智模型/NULL处理 + Python函数/异常/文件IO + NumPy向量化/axis/广播
+- 完成综合场景演练:读取→清洗→NumPy分析→SQL验证→JSON报告
+- 完成 10 道混合自测题,7 道完全正确,3 道有小问题(题2/5/10)
+- 正确率约 70% 严格 / 90% 宽松
+
+### 学到的关键点
+
+**Week 2 知识串联**
+- 数据岗工作流 = 读取 → 清洗 → 分析 → 验证 → 报告,每个环节都要异常安全
+- SQL 子查询四种位置:WHERE比较/IN/EXISTS/FROM派生表 —— 根据「先算什么、再用什么」选择位置
+- JOIN 先问「要不要保留匹配不上的行」→ 要→LEFT,不要→INNER
+- JOIN 后三件事:查NULL/确认key唯一/确认粒度
+- Python 异常处理:只抓预期类型、成功逻辑放else、坏数据跳过+log
+- 文件IO:pathlib检查存在性、csv.DictReader值全是字符串、写CSV加newline=""
+- NumPy:向量化替代循环、布尔索引算占比、axis记住「被消灭的维度」、广播用keepdims
+
+**标量子查询 vs 相关子查询 vs 派生表**
+| 场景 | 选哪个 | 原因 |
+|------|--------|------|
+| 用一个聚合值做比较 | 标量子查询 | 先算出一个数,再逐行比较 |
+| 先圈出一批key再捞明细 | IN子查询 | 把子查询结果当集合用 |
+| 判断存在/不存在 | EXISTS/NOT EXISTS | 只看有没有行,不返回具体值 |
+| 先聚合再对聚合结果聚合 | 派生表 | 两步聚合,中间结果当临时表 |
+
+**题10 边界测试教训**
+- 边界测试不能只用文件名占位,必须实际创建测试文件
+- 空文件 = 只有表头无数据行;全坏数据 = 有数据行但全部转换失败
+- 测试前要确认文件存在:`Path(filename).exists()`
+
+### 卡住/印象深的题
+- **题 2**:用 try/except ZeroDivisionError 代替前置 if b==0 检查 —— 虽然结果对,但预期分支应该显式判断而非兜底捕获
+- **题 5**:用 print 代替 logging.info —— 题目明确要求 logging,这是读题细节(小失误)
+- **题 10**:empty.csv 和 all_bad.csv 不存在,导致「空文件」和「全坏数据」测试实际上测的是「文件不存在」——#19 的变体:测试用例要真实构造
+
+### 概念顿悟
+- **综合场景演练的价值**:把孤立知识点串联成工作流,比单题练习更接近真实数据岗工作
+- **SQL 验证 Python 结果**:题1/4/7/9的 SQL 结果可以和 Python 分析交叉验证,两种工具互补
+- **边界测试是「生产代码」和「练习代码」的分水岭**:练习题可以跳过边界,但生产代码必须处理
+
+### 做得好的
+- **Day 11 的读题失误(#42) 今天没复发**:题3占比、题4 COALESCE、题6空数组都正确处理
+- **SQL 旧弱点未复发**:题9 HAVING 里写聚合函数本身,没有使用别名(#15 ✅)
+- **异常处理全面**:题6/8/10 都处理了文件不存在、空数据、坏数据、字段缺失
+- **NumPy 向量化熟练**:题3/8/10 都没有写 for 循环,全部向量化操作
+
+### 暴露的问题
+1. **#45 测试文件要真实存在**:题10的边界测试用了不存在的文件名,导致测试失效。边界测试必须实际构造数据。
+2. **#5 小复发**:题5用 print 代替 logging.info —— 题目明确要求 logging,这是读题细节。
+3. **#2 实现方式**:题2用异常捕获代替前置检查 —— 预期内的情况应该显式判断。
+
+---
+
+## 我的弱点清单(持续累计)
+
+### 已克服 ✅
+1. ~~习惯用 `for i in range(len(lst))`~~ ✅
+2. ~~简单过滤循环应优先用列表推导式~~ ✅
+3. ~~字典推导式语法~~ ✅
+
+### 持续注意
+4. 查重该用 set(O(1) 查找),计数该用 dict
+5. 经典面试题应先想 O(n) 解法,而不是上来就双重循环
+6. 永远不要假设输入数据是有序的 —— 需要排序就显式调 `sorted()`
+7. 用 `min()` / `max()` 替代 if/else 取小取大
+8. 变量名不要和外层变量重名
+9. 优先用 Python 内置函数:`abs()`、`max()`、`zip()` 等
+10. Python 排序是稳定的 —— 多次 sorted 可实现复杂多关键字排序
+11. 可读性 > 优雅 —— 不要为了一行而损害代码可读性
+12. 写 SQL 时再看一眼题目要求的列是哪几个(Day 4 题 2、8 教训)
+13. SQL 返回 0 行的排查思路:先看数据范围,再怀疑查询
+14. `LIKE` 大小写敏感,不确定大小写用 `ILIKE` 或 `LOWER()`
+15. `HAVING` 里写聚合函数本身,不要用 SELECT 的别名 —— ✅ Day 12 题 9 正确
+16. 别名可用性规则:`ORDER BY` 能用别名,`WHERE`/`GROUP BY`/`HAVING` 不能
+17. `SELECT` 最后一列后面不要加逗号 —— ✅ Day 12 未犯
+18. **边界初始化**:维护极值用 `float('-inf')` / `float('inf')` —— ✅ Day 9 题 2 活用
+19. **"碰巧对" ≠ "正确"**:写完代码自己造刁钻测试用例验证 —— ⚠️ Day 12 题 10 边界测试文件不存在(#45)
+20. **`NOT IN` 遇 NULL 全军覆没**:子查询列可能有 NULL 时,永远用 `NOT EXISTS`
+21. **粒度意识**:分清「订单粒度」和「客户粒度」,决定 `FROM` 谁、是否要 `DISTINCT`
+22. **碰新数据先 `DESCRIBE`**:列名、列类型以 DESCRIBE 为准
+23. **相关子查询里不要画蛇添足加 `GROUP BY`**:`WHERE` 已锁定单组
+24. **`%%sql` 必须在 cell 第一行**:前面有注释/空行会报 SyntaxError
+25. **JOIN 后必查未匹配行(NULL)**:用 `COALESCE` 命名或排除,别留裸 None —— ✅ Day 12 题 4 正确
+26. **JOIN 膨胀(fan-out)**:JOIN 前确认右表连接 key 唯一,否则 SUM/COUNT 虚高
+27. **JOIN 前先验证两表 key 对齐情况**:别凭感觉选 INNER/LEFT
+28. **`LIMIT N` 看到的不是全部**:要观察现象就主动构造能看到它的查询
+29. **装饰器 wrapper 两件事**:① 签名 `(*args, **kwargs)` ② 必须 `return` 原函数返回值 —— ✅ Day 12 题 5 正确
+30. **`dict["k"]` vs `dict.get("k")`**:前者缺键抛 KeyError,后者缺键返回 None 不抛错;想靠 except 抓缺字段就用 `[]` —— ✅ Day 10 题 7 改对
+31. **死代码**:`continue`/`return`/`break`/`raise` 之后的同层代码永不执行 —— ✅ Day 10 题 7 避开
+32. **文件流式读取**:用 `for line in f`,不要 `readlines()`
+33. **默认参数禁用可变对象**:不要 `def f(lst=[])`,用 `None` 再函数内新建
+34. **写文件 vs 读文件**:`open()` 传的是路径不是数据;写文件前该检查的是「数据非空」而非「文件存在」,读文件前才检查存在性
+35. **异常分支要 `return` 提前退出**:文件不存在/坏行处理完要 `return`,别让代码继续往下走到会崩的地方 —— ✅ Day 12 题 6/8/10 正确
+36. **类型转换要显式**:`float(record["total"])` 主动转,别依赖后续运算「碰巧」报错来拦坏数据 —— ✅ Day 12 题 6/8/10 正确
+37. **写完必须运行**:定义了函数不调用 = 没测 = 不知道对不对
+38. **NumPy 向量化替代循环**:看到数组操作先想「能不能向量化」,别写 for —— ✅ Day 12 题 3/8/10 正确
+39. **axis=0 压行(列汇总),axis=1 压列(行汇总)**:记住「被消灭的维度」 —— ✅ Day 12 题 3/10 正确
+40. **布尔数组 `.mean()` 算占比**:`(arr > 0).mean()` 直接得比例,不用 `sum/len` —— ✅ Day 12 题 3 正确
+41. **广播用 `keepdims=True` 保持维度**:`(features - mean_keepdims) / std_keepdims`
+42. **读题再仔细**:题3把「替换为60」写成「0」、题6把「占比」看成「平均值」—— ✅ Day 12 未复发
+43. **量化计算跟踪 shape 和语义**:题8 `portfolio` 是 3×5 矩阵,但「投资组合日收益率」是 1×5 向量。做矩阵运算时必须清楚每个变量的 shape 代表什么 —— ✅ Day 12 未涉及此场景
+44. **验证要验证「结果」而非「输入」**:题9验证的是原始数据的均值/标准差,而不是标准化后的结果——做了 A 却验证 B —— ✅ Day 12 未涉及此场景
+45. **测试文件要真实存在**:题10的 empty.csv 和 all_bad.csv 不存在,导致边界测试失效。边界测试必须实际构造数据 ⚠️
+
+---
+
+## SQL ↔ Python 翻译表(持续扩充)
+
+| 操作 | Python | SQL |
+|------|--------|-----|
+| 取所有 | `[row for row in data]` | `SELECT * FROM data` |
+| 过滤 | `[r for r in data if r['x'] > 100]` | `WHERE x > 100` |
+| 选列 | `[r['name'] for r in data]` | `SELECT name FROM data` |
+| 计算列 | `[r['x'] * 1.13 for r in data]` | `SELECT x * 1.13 FROM data` |
+| 多条件 | `if a > 0 and b in [...]` | `WHERE a > 0 AND b IN (...)` |
+| 排序 | `sorted(data, key=lambda r: r['x'])` | `ORDER BY x` |
+| 降序 | `sorted(..., key=lambda r: -r['x'])` | `ORDER BY x DESC` |
+| 多关键字 | `sorted(..., key=lambda r: (r['a'], -r['b']))` | `ORDER BY a ASC, b DESC` |
+| 取前 N | `sorted(...)[:5]` | `LIMIT 5` |
+| 去重 | `set(...)` | `SELECT DISTINCT` |
+| 模糊匹配 | `r['x'].startswith('M')` | `WHERE x LIKE 'M%'` |
+| 计数 | `counts[x] = counts.get(x,0)+1` | `GROUP BY x ... COUNT(*)` |
+| 分组求和 | 嵌套 dict 累加 | `GROUP BY x ... SUM(...)` |
+| 二维透视 | `defaultdict(lambda: defaultdict(int))` | `GROUP BY a, b ... SUM(...)` |
+| 组后过滤 | 先聚合再 `if` 筛选 | `HAVING SUM(...) > N` |
+| 三元/高低判断 | `'高' if x > avg else '低'` | `CASE WHEN x > avg THEN '高' ELSE '低' END` |
+| 先算中间值再用 | `avg = sum(...)/len(...)` 后比较 | 标量子查询 `WHERE x > (SELECT AVG ...)` |
+| 圈出一批 key 再捞 | `keys={...}; [r for r in data if r['k'] in keys]` | `WHERE k IN (SELECT ...)` |
+| 判断是否存在 | `any(...)` | `EXISTS (SELECT 1 ...)` |
+| 判断不存在 | `not any(...)` | `NOT EXISTS (SELECT 1 ...)` |
+| 两步聚合 | 先 groupby 出中间结果再聚合 | `FROM (SELECT ... GROUP BY ...) AS t` |
+| 按 key 关联两表 | `dict` 查表 / `pd.merge` | `JOIN ... ON 左.k = 右.k` |
+| 找左表有右表没有的 | `[x for x in a if x not in b]` | `LEFT JOIN ... WHERE 右.k IS NULL` / `NOT EXISTS` |
+| 空值兜底 | `a if a is not None else b` / `d.get(k, default)` | `COALESCE(a, b)` |
+| 分组求和(手写) | 遍历 + `d[k] = d.get(k,0) + v` | `GROUP BY k ... SUM(v)` |
+| 分组计数+求和 | `d[k]={'count':0,'sum':0}` 累加 | `GROUP BY k ... COUNT(*), SUM(v)` |
+| **数组筛选** | `arr[arr > 0]` | `WHERE x > 0` |
+| **数组聚合(行)** | `arr.sum(axis=1)` | `GROUP BY 行 ... SUM(...)` |
+| **数组聚合(列)** | `arr.mean(axis=0)` | `SELECT AVG(col1), AVG(col2) ...` |
+| **累计和** | `np.cumsum(arr)` | `SUM(...) OVER (ORDER BY ...)` (窗口函数) |
+| **占比** | `(arr > 0).mean()` | `COUNT(CASE WHEN x>0 THEN 1 END) * 1.0 / COUNT(*)` |
+| **Z-score 标准化** | `(arr - mean) / std` | `(x - AVG(x)) / STDDEV(x)` |
+| **矩阵加权求和** | `(matrix * weights).sum(axis=0)` | `SUM(x * w) GROUP BY day` |
+| **数据管道验证** | Python NumPy 计算 | SQL 聚合验证 | 两者交叉验证
+
+---
+
+## Day 12 当日小结
+
+### 数字
+- 10 道混合练习题,7 道完全正确,3 道有小问题(题2/5/10)
+- 正确率约 70%(严格标准) / 90%(宽松标准)
+- GitHub 连续提交保持
+- Week 2 累计:Day 7-12,72 道练习题,正确率约 75%
+
+### 做得好的
+- **SQL 题(1/4/7/9) 全部正确**:子查询、JOIN、COALESCE、派生表、HAVING 都掌握扎实
+- **NumPy 题(3/8/10) 全部正确**:向量化、布尔索引、axis、广播、统计聚合熟练
+- **Day 11 读题失误未复发**:占比、COALESCE、空数组处理都正确(#42 克服中)
+- **旧弱点未复发**:HAVING 用别名(#15)、末尾逗号(#17)、JOIN 后 NULL(#25) 都正确
+- **异常处理全面**:文件不存在、空数据、坏数据、字段缺失都处理了
+
+### 暴露的问题
+1. **#45 边界测试文件要真实存在**:题10的 empty.csv 和 all_bad.csv 不存在,导致测的是「文件不存在」而非「空文件/全坏数据」。边界测试必须实际构造数据,不能只用文件名占位。
+2. **#5 小复发**:题5用 print 代替 logging.info —— 题目明确要求 logging。
+3. **#2 实现方式**:题2用 try/except ZeroDivisionError 代替前置 if b==0 —— 预期内分支应该显式判断。
+
+### Week 2 总结
+
+#### 数字
+- 6 天,72 道练习题,正确率约 75%
+- GitHub 连续 12 天提交
+
+#### 能力变化
+- SQL:从单表查询 → 子查询(四种位置) → JOIN(四种类型) → 派生表两步聚合
+- Python:从基础函数 → 装饰器 → 异常处理(logging/自定义异常/异常链) → 文件IO(csv/json/pathlib)
+- NumPy:从数组创建 → 向量化 → 布尔索引 → axis → 广播 → 量化场景(收益率/投资组合/Z-score)
+- 工作流:建立了「读取→清洗→分析→验证→报告」的完整数据管道思维
+
+#### 暴露的问题(Week 3 要改进)
+1. **边界测试习惯**:多次出现「测试用例没真正构造」(#19/#45),需要建立边界测试 checklist
+2. **读题细节**:虽比 Day 11 好,但题5的 logging 要求、题2的「除零时」表述仍需注意
+3. **实现方式选择**:预期内情况用 if 前置检查,异常用 try/except 兜底
+
+### Week 3 预告
+- Pandas 基础:Series/DataFrame/读写/筛选/索引
+- SQL 字符串函数 + 日期处理
+- 这是从「NumPy 数组」到「表格数据」的过渡,Pandas 是数据岗的核心工具
+
+### Day 13 预告
+- Pandas 基础:DataFrame 创建、基本属性、读写 CSV/Excel
+- 理解 Series 和 DataFrame 的关系(Series 是带索引的 NumPy 数组)
+
