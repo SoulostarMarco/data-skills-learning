@@ -403,6 +403,234 @@ pd.pivot_table(df, values='total', index='country', columns='category', aggfunc=
 
 ---
 
+## Day 15: Pandas 核心 —— groupby、agg、merge、concat、filter
+
+### 今日完成
+- 跟练:groupby 分组聚合、agg 多聚合/自定义聚合、transform 分组变换(保留原shape)、merge 表关联(inner/left/right/outer)、concat 纵向/横向拼接、filter 按组条件筛选
+- 完成 10 道练习题,6 道完全正确(1/4/5/6/7/8),4 道有小问题(2/3/9/10)
+
+### 学到的关键点
+
+**groupby 心智模型:拆分→应用→合并**
+| 操作 | 代码 | 返回值 | 适用场景 |
+|------|------|--------|----------|
+| 简单聚合 | `df.groupby('g')['x'].sum()` | Series | 每组一个值 |
+| 多聚合 | `df.groupby('g')['x'].agg(['sum','mean'])` | DataFrame | 多统计量 |
+| 多列聚合 | `df.groupby('g').agg({'x':'sum','y':'mean'})` | DataFrame | 不同列不同统计 |
+| transform | `df.groupby('g')['x'].transform('mean')` | 等长Series | 分组填充/标准化/排名 |
+| filter | `df.groupby('g').filter(lambda x: ...)` | DataFrame | 保留/删除整个组 |
+
+**transform vs agg 核心区别**
+| transform | agg |
+|-----------|-----|
+| 返回和原 df 等长 | 每组一行(降维) |
+| 用于新增列 | 用于汇总统计 |
+| `groupby('g')['x'].transform('mean')` | `groupby('g')['x'].agg('mean')` |
+
+**merge 参数对照 SQL**
+| Pandas | SQL | 说明 |
+|--------|-----|------|
+| `how='inner'` | INNER JOIN | 交集,只保留匹配上的 |
+| `how='left'` | LEFT JOIN | 保留左表全部,右表不匹配填NaN |
+| `how='right'` | RIGHT JOIN | 保留右表全部 |
+| `how='outer'` | FULL JOIN | 并集 |
+
+**merge 后也查未匹配行**:和 SQL JOIN 一样,`left[right_col.isnull()]` 检查右表未匹配。
+
+**concat 方向**
+| 方向 | 参数 | 效果 | 注意 |
+|------|------|------|------|
+| 纵向 | `axis=0` | 行增加,列取并集 | 默认按索引对齐,用 `ignore_index=True` |
+| 横向 | `axis=1` | 列增加,行取并集 | 可能产生重复列名 |
+
+**agg 命名聚合(新写法)**
+```python
+df.groupby('g').agg(
+    total_sum=('total', 'sum'),
+    total_mean=('total', 'mean'),
+    order_count=('quantity', 'count')
+).reset_index()
+```
+
+### 卡住/印象深的题
+- **题 2**: `agg(['sum', 'mean', 'count'])` 少了 `std`,题目要求四个统计量但只给了三个——遗漏
+- **题 3**: `print(df['country_rank'].describe)` 没有加括号,打印的是方法对象而不是统计结果——**方法必须加括号调用**
+- **题 9**: RFM 的 R 为负数,因为 `today = 2024-06-01` 而订单日期是 2024-01-01 到 2024-12-31,最后下单日期在 today 之后,导致 `(today - last_date).days` 为负。应该用 today 在订单日期之后,如 `2025-01-01`。另外 `RFM_Score` 用字符串拼接(`"333"`) 而不是数值相加(`9`),排序语义不同。
+- **题 10**: 验证部分只打印了数字没有加描述文字,可读性差
+
+### 概念顿悟
+- **groupby 后想「降维」→ agg,想「保留原shape」→ transform**:这是 groupby 最核心的选择逻辑
+- **transform 返回等长 Series 是分组填充的关键**: `groupby('country')['total'].transform('mean')` 返回每行对应国家的均值,可以直接用于 `fillna`
+- **agg 命名聚合是 Pandas 推荐写法**:比 `.agg({'total': ['sum', 'mean']})` 更清晰,列名更可控
+- **merge 后必查 NaN**:和 SQL JOIN 后的 COALESCE 检查等价,这是数据岗的验证习惯
+- **filter 保留的是「整个组」,不是「满足条件的行」**:filter 的结果是原 df 的子集,行数可能不变或变少,但列数和原 df 相同
+- **concat 横向拼接可能产生重复列**:如 `order_id` 在两个子集中都有,会保留两列
+
+### 做得好的
+- **merge + groupby + agg 综合掌握**:题8 完整实现了 merge → 命名聚合 → pivot_table → rank 找最高 → 输出 CSV,数据岗工作流完整
+- **双重分组熟练**:题7 的 `groupby(['country', 'category'])` 和 `.loc` 定位正确
+- **transform 分组排名**:题3 的 `transform('rank', ascending=False, method='first')` 用法正确
+- **filter 按组筛选**:题6 三个 filter 条件都正确理解了「保留整个组」的语义
+- **RFM 分析框架**:题9 虽然 R 为负,但 RFM 的整体框架(qcut 分箱 + 得分 + 排序)理解正确
+
+### 暴露的问题
+1. **遗漏统计量**:题2 的 `agg` 少了 `std`,做完后没回头检查题目要求
+2. **方法调用**:题3 的 `.describe` 没加括号,打印的是方法对象 `<bound method>` 而不是统计结果。这是 Python 基础问题,不是 Pandas 问题
+3. **日期逻辑**:题9 的 R 计算为负数,因为 today 选在了订单日期之前。做日期分析时要先确认数据的时间范围
+4. **RFM_Score 语义**:题9 用字符串拼接 `"333"` 而不是数值相加 `9`。虽然字符串排序结果碰巧对,但后续计算(如求平均分)会出问题。应该用数值相加
+
+---
+
+## 我的弱点清单(Week 3 持续累计)
+
+### 从 Week 2 继承
+4. 查重该用 set(O(1) 查找),计数该用 dict
+5. 经典面试题应先想 O(n) 解法,而不是上来就双重循环
+6. 永远不要假设输入数据是有序的 —— 需要排序就显式调 `sorted()`
+7. 用 `min()` / `max()` 替代 if/else 取小取大
+8. 变量名不要和外层变量重名
+9. 优先用 Python 内置函数:`abs()`、`max()`、`zip()` 等
+10. Python 排序是稳定的 —— 多次 sorted 可实现复杂多关键字排序
+11. 可读性 > 优雅 —— 不要为了一行而损害代码可读性
+12. 写 SQL 时再看一眼题目要求的列是哪几个
+13. SQL 返回 0 行的排查思路:先看数据范围,再怀疑查询
+14. `LIKE` 大小写敏感,不确定大小写用 `ILIKE` 或 `LOWER()`
+15. `HAVING` 里写聚合函数本身,不要用 SELECT 的别名
+16. 别名可用性规则:`ORDER BY` 能用别名,`WHERE`/`GROUP BY`/`HAVING` 不能
+17. `SELECT` 最后一列后面不要加逗号
+18. **边界初始化**:维护极值用 `float('-inf')` / `float('inf')`
+19. **"碰巧对" ≠ "正确"**:写完代码自己造刁钻测试用例验证
+20. **`NOT IN` 遇 NULL 全军覆没**:子查询列可能有 NULL 时,永远用 `NOT EXISTS`
+21. **粒度意识**:分清「订单粒度」和「客户粒度」
+22. **碰新数据先 `DESCRIBE`**:列名、列类型以 DESCRIBE 为准
+23. **相关子查询里不要画蛇添足加 `GROUP BY`**
+24. **`%%sql` 必须在 cell 第一行**
+25. **JOIN 后必查未匹配行(NULL)**:用 `COALESCE` 命名或排除
+26. **JOIN 膨胀(fan-out)**:JOIN 前确认右表连接 key 唯一
+27. **JOIN 前先验证两表 key 对齐情况**
+28. **`LIMIT N` 看到的不是全部**
+29. **装饰器 wrapper 两件事**:① 签名 `(*args, **kwargs)` ② 必须 `return` 原函数返回值
+30. **`dict["k"]` vs `dict.get("k")`**:前者缺键抛 KeyError,后者缺键返回 None
+31. **死代码**:`continue`/`return`/`break`/`raise` 之后的同层代码永不执行
+32. **文件流式读取**:用 `for line in f`,不要 `readlines()`
+33. **默认参数禁用可变对象**:不要 `def f(lst=[])`,用 `None` 再函数内新建
+34. **写文件 vs 读文件**:`open()` 传的是路径不是数据
+35. **异常分支要 `return` 提前退出**
+36. **类型转换要显式**:`float(record["total"])` 主动转
+37. **写完必须运行**:定义了函数不调用 = 没测 = 不知道对不对
+38. **NumPy 向量化替代循环**:看到数组操作先想「能不能向量化」
+39. **axis=0 压行(列汇总),axis=1 压列(行汇总)**
+40. **布尔数组 `.mean()` 算占比**:`(arr > 0).mean()` 直接得比例
+41. **广播用 `keepdims=True` 保持维度**
+42. **读题再仔细**:做完后回头扫一眼题目要求的输出格式/数值/列名
+43. **量化计算跟踪 shape 和语义**
+44. **验证要验证「结果」而非「输入」**
+45. **测试文件要真实存在**:边界测试必须实际构造数据
+46. **`isin` 统计数量用 `.sum()` 而非 `len()`**
+47. **多条件布尔筛选必须加括号**:`(a > 0) & (b < 10)`,每个条件独立括起来
+48. **Pandas 方法返回新对象,不修改原 df**:`str.replace`/`fillna`/`sort_values`/`dropna` 必须显式赋值
+49. **`sort_values` 不修改原 df,取前N用 `nlargest`**:题6 的 `sort_values` 未赋值,`loc[0:9]` 改错对象
+50. **方法调用必须加括号**:`.describe()` 是调用方法,`.describe` 是引用方法对象 ⚠️
+51. **日期分析先确认数据时间范围**:today 选在订单日期之后,否则计算天数为负 ⚠️
+52. **数值计算用数值类型**:RFM_Score 用数值相加(9) 而不是字符串拼接("333") ⚠️
+
+---
+
+## SQL ↔ Python 翻译表(Week 3 持续扩充)
+
+| 操作 | Python | SQL |
+|------|--------|-----|
+| 取所有 | `df` / `df.loc[:, :]` | `SELECT * FROM t` |
+| 过滤 | `df[df['x'] > 100]` | `WHERE x > 100` |
+| 选列 | `df['name']` / `df[['a','b']]` | `SELECT name FROM t` / `SELECT a, b` |
+| 计算列 | `df['new'] = df['x'] * 1.13` | `SELECT x * 1.13 AS new FROM t` |
+| 多条件 | `df[(a > 0) & (b.isin([...]))]` | `WHERE a > 0 AND b IN (...)` |
+| 排序 | `df.sort_values('x')` | `ORDER BY x` |
+| 降序 | `df.sort_values('x', ascending=False)` | `ORDER BY x DESC` |
+| 多关键字 | `df.sort_values(['a','b'], ascending=[True, False])` | `ORDER BY a ASC, b DESC` |
+| 取前 N | `df.nlargest(5, 'x')` / `df.sort_values('x').head(5)` | `LIMIT 5` / `ORDER BY x DESC LIMIT 5` |
+| 去重 | `df['col'].unique()` / `df.drop_duplicates()` | `SELECT DISTINCT` |
+| 模糊匹配 | `df['x'].str.contains('M')` | `WHERE x LIKE '%M%'` |
+| 前缀匹配 | `df['x'].str.startswith('M')` | `WHERE x LIKE 'M%'` |
+| 字符串替换 | `df['x'].str.replace('a', 'b')` | `REPLACE(x, 'a', 'b')` |
+| 计数 | `len(df)` / `df.shape[0]` | `COUNT(*)` |
+| 分组求和 | `df.groupby('x')['y'].sum()` | `GROUP BY x ... SUM(y)` |
+| 组内均值填充 | `df.groupby('g')['y'].transform('mean')` | `AVG(y) OVER (PARTITION BY g)` (窗口函数) |
+| 组内排名 | `df.groupby('g')['y'].transform('rank')` | `RANK() OVER (PARTITION BY g ORDER BY y)` |
+| 组后过滤 | `df.groupby('x').filter(lambda g: g['y'].sum() > N)` | `HAVING SUM(y) > N` |
+| 三元/高低判断 | `np.where(df['x'] > avg, '高', '低')` | `CASE WHEN x > avg THEN '高' ELSE '低' END` |
+| 先算中间值再用 | `avg = df['x'].mean()` 后筛选 | 标量子查询 `WHERE x > (SELECT AVG(x) FROM t)` |
+| 圈出一批 key 再捞 | `keys = [...]; df[df['k'].isin(keys)]` | `WHERE k IN (SELECT ...)` |
+| 判断是否存在 | `df['x'].any()` | `EXISTS (SELECT 1 ...)` |
+| 判断不存在 | `~(df['x'].any())` | `NOT EXISTS (SELECT 1 ...)` |
+| 两步聚合 | `df.groupby('a').agg({'b':'sum'}).reset_index()` | `FROM (SELECT ... GROUP BY ...) AS t` |
+| 按 key 关联两表 | `pd.merge(df1, df2, on='k', how='left')` | `LEFT JOIN ... ON 左.k = 右.k` |
+| 找左表有右表没有的 | `df1[~df1['k'].isin(df2['k'])]` | `LEFT JOIN ... WHERE 右.k IS NULL` / `NOT EXISTS` |
+| 空值兜底 | `df['a'].fillna('Unknown')` | `COALESCE(a, 'Unknown')` |
+| 日期提取 | `df['date'].dt.strftime('%Y-%m')` | `STRFTIME(date, '%Y-%m')` |
+| 类型转换 | `pd.to_numeric(col, errors='coerce')` | `CAST(col AS FLOAT)` |
+| 缺失值填充 | `df['col'].fillna(0)` | `COALESCE(col, 0)` |
+| 累计和 | `df['x'].cumsum()` | `SUM(x) OVER (ORDER BY ...)` |
+| 占比 | `(df['x'] > 0).mean()` | `COUNT(CASE WHEN x>0 THEN 1 END) * 1.0 / COUNT(*)` |
+| Z-score 标准化 | `(df['x'] - mean) / std` | `(x - AVG(x)) / STDDEV(x)` |
+| 分箱(等宽) | `pd.cut(df['x'], bins=[0,100,200,300])` | `CASE WHEN x<100 THEN '低' WHEN x<200 THEN '中' ELSE '高' END` |
+| 分箱(等分位) | `pd.qcut(df['x'], q=4)` | `NTILE(4) OVER (ORDER BY x)` (窗口函数) |
+| 透视表 | `pd.pivot_table(df, values='v', index='r', columns='c', aggfunc='sum')` | `SELECT r, c, SUM(v) FROM t GROUP BY r, c` |
+| 数据管道验证 | Python NumPy/Pandas 计算 | SQL 聚合验证 | 两者交叉验证
+| 拼接(纵向) | `pd.concat([df1, df2], axis=0)` | `UNION ALL` |
+| 拼接(横向) | `pd.concat([df1, df2], axis=1)` | `SELECT a.*, b.* FROM a JOIN b` |
+| 分组排名 | `df.groupby('g')['x'].rank(ascending=False)` | `ROW_NUMBER() OVER (PARTITION BY g ORDER BY x DESC)` (窗口函数) |
+
+---
+
+## Day 15 当日小结
+
+### 数字
+- 10 道练习题,6 道完全正确(1/4/5/6/7/8),4 道有小问题(2/3/9/10)
+- 正确率约 60%(严格标准) / 80%(宽松标准)
+- GitHub 连续提交保持
+- Week 3 累计:Day 13-15,30 道练习题
+
+### 做得好的
+- **merge + groupby + agg 综合掌握**:题8 完整实现了 merge → 命名聚合 → pivot_table → rank 找最高 → 输出 CSV,数据岗工作流完整
+- **双重分组熟练**:题7 的 `groupby(['country', 'category'])` 和 `.loc` 定位正确
+- **transform 分组排名**:题3 的 `transform('rank', ascending=False, method='first')` 用法正确
+- **filter 按组筛选**:题6 三个 filter 条件都正确理解了「保留整个组」的语义
+- **agg 命名聚合**:题8 使用了 `agg(total_sum=('total', 'sum'))` 新写法,代码清晰
+
+### 暴露的问题
+1. **#50 方法调用必须加括号**:题3 的 `.describe` 没加括号,打印的是 `<bound method>` 而不是统计结果。Python 方法必须加括号调用才能执行。
+2. **#51 日期分析先确认时间范围**:题9 的 `today = 2024-06-01` 在订单日期之前,导致 R 为负数。做日期分析时要先看数据的时间范围。
+3. **#52 数值计算用数值类型**:题9 的 RFM_Score 用字符串拼接 `"333"` 而不是数值相加 `9`。字符串排序和数值排序语义不同,后续计算也会出问题。
+4. **遗漏统计量**:题2 的 `agg` 少了 `std`,做完后没回头检查题目要求。
+
+### 难度反馈
+- 题8(merge+agg+pivot_table+rank)和题10(综合管道)难度贴合,综合考察了多个知识点
+- 题9(RFM)是经典客户分析模型,但日期范围问题暴露了对数据时间分布的理解不足
+- 题3 的 `.describe` 问题说明 Python 基础(方法调用)和 Pandas 操作都需要注意
+
+### Day 16 预告
+- Week 3 综合复习 + 阶段自测
+- 混合练习:Python(Pandas 所有操作) + SQL 交叉出题
+- 检验 Week 3 三天学习成果,为 Week 4 做准备
+
+---
+
+### Git Push
+```bash
+cd "C:\Users\69261\Desktop\data-skills-learning"
+git add week03/day15_practice.ipynb week03/day15_exercises.ipynb week03/notes.md
+git commit -m "feat(week03): add Day 15 Pandas core groupby/merge/concat
+
+- Add day15_practice.ipynb: groupby/agg/transform/merge/concat/filter
+- Add day15_exercises.ipynb: 10 problems, 6/10 correct
+- Fix weaknesses #50 method call parens, #51 date range check, #52 numeric score
+- Update notes.md with Day 15 learnings and expanded SQL<<->Python table"
+git push origin main
+```
+
+---
+
 ### Git Push
 ```bash
 cd "C:\Users\69261\Desktop\data-skills-learning"
