@@ -643,3 +643,116 @@ git commit -m "feat(week03): add Day 14 Pandas advanced
 - Update notes.md with Day 14 learnings and expanded SQL<<->Python table"
 git push origin main
 ```
+
+---
+
+## Day 16: Week 3 综合复习 —— 阶段自测
+
+### 今日完成
+- 回顾 Week 3 知识速查卡:DataFrame 基础/字符串/缺失值/分箱/groupby/agg/transform/merge/concat/filter
+- 回顾 Week 3 弱点清单 #42/#46/#47/#48/#49/#50/#51/#52
+- 完成综合场景演练:读取→清洗→关联→分析→输出报告
+- 完成 10 道混合自测题,8 道完全正确,2 道有小问题(题6/10)
+- 正确率约 80%(严格标准) / 90%(宽松标准)
+
+### 学到的关键点
+
+**Pandas 核心操作总结**
+| 操作 | 核心代码 | 返回值 | 适用场景 |
+|------|----------|--------|----------|
+| 分组聚合 | `df.groupby('g')['x'].sum()` | Series | 简单分组统计 |
+| 多聚合 | `df.groupby('g')['x'].agg(['sum','mean'])` | DataFrame | 多统计量 |
+| 命名聚合 | `df.groupby('g').agg(sum=('x','sum'))` | DataFrame | 清晰列名 |
+| transform | `df.groupby('g')['x'].transform('mean')` | 等长Series | 分组填充/标准化/排名 |
+| filter | `df.groupby('g').filter(lambda x: ...)` | DataFrame | 保留/删除整个组 |
+| merge | `pd.merge(a, b, on='k', how='left')` | DataFrame | 表关联 |
+| concat | `pd.concat([a,b], axis=0, ignore_index=True)` | DataFrame | 拼接 |
+| pivot_table | `pd.pivot_table(...)` | DataFrame | 行列汇总 |
+
+**Week 3 弱点防守成果**
+| 弱点 | 触发次数 | 状态 |
+|------|----------|------|
+| #42 读题不仔细 | 0 次 | ✅ 克服 |
+| #46 isin 统计用 `.sum()` | 0 次 | ✅ 克服 |
+| #47 多条件加括号 | 0 次 | ✅ 克服 |
+| #48 方法返回新对象 | 0 次 | ✅ 克服 |
+| #49 sort_values 不修改原 df | 0 次 | ✅ 克服 |
+| #50 方法调用加括号 | 0 次 | ✅ 克服 |
+| #51 日期范围确认 | 未涉及 | — |
+| #52 数值计算用数值类型 | 未涉及 | — |
+
+**Notebook 副作用警告**(#53)
+- 同一个 notebook 中 `df` 是共享状态,前面的 `loc` 赋值会影响后续代码
+- 防御策略:① 用 `.copy()` 创建副本 ② 在后续 cell 重新读取 CSV ③ 用独立变量名
+
+**综合题执行策略**(#54)
+- 综合管道题要逐项检查每个阶段是否完成
+- 建议用注释标记阶段: `# === 阶段1: 清洗 ===`
+- 每个阶段结束后打印验证信息
+
+### 卡住/印象深的题
+- **题 6**:题4 的 `df.loc[...] = 'VIP'` 污染了 df,导致题6 分组结果中出现 VIP「国家」——**Notebook 副作用**(#53)
+- **题 10**:跳过了阶段1的清洗步骤(order_date 转 datetime、total 转 float、dropna、unit_price、year_month)——**综合题要逐项执行**(#54)
+
+### 概念顿悟
+- **Week 3 弱点防守成功**:连续 3 天没有复发 #42/#48/#49/#50,说明刻意练习有效
+- **transform 的两种写法等价**:`df.groupby('g')['x'].transform('rank')` == `df.groupby('g')['x'].rank()`
+- **stack().idxmax() 是透视表找最高的优雅写法**:比双重循环高效得多
+- **命名聚合是 Pandas 推荐写法**:`.agg(sum=('total','sum'))` 比 `.agg({'total': 'sum'})` 更可控
+- **qcut + groupby + concat 是数据对比分析的常用模式**:分位箱 vs 国家分组对比
+
+### 做得好的
+- **8/10 完全正确**:是 Week 3 最好的一次
+- **所有防守弱点未复发**:#42/#46/#47/#48/#49/#50 全部守住
+- **nlargest 正确**:题4 用 `nlargest(5).index` 取索引再 `loc` 赋值,没有犯 #49
+- **transform 分组排名**:题7 的 cat_rank 用法正确,验证也完整
+- **qcut + concat 综合**:题8 的列名对齐、group_type 标记都很到位
+- **pivot_table + stack**:题9 的 `.stack().idxmax()` 是透视表找最高的标准写法
+
+### 暴露的问题
+1. **#53 Notebook 副作用**:题4 的 `loc` 赋值污染了 df,题6 的结果受影响。后续综合题要注意 notebook 中 df 的共享状态。
+2. **#54 综合题按步骤执行**:题10 跳过了阶段1的清洗步骤。做综合管道题时要逐项检查,建议用阶段注释 + 验证打印。
+
+### 难度反馈
+- 题8(qcut+concat)和题9(filter+pivot_table)综合考察了多个知识点,但用户掌握扎实
+- 题10 综合管道的阶段1是常见遗漏点,后续题目设计会在每个阶段加「验证提示」
+
+### Week 3 总结
+
+#### 数字
+- 4 天(Day 13-16),40 道练习题,正确率约 75%
+- GitHub 连续 16 天提交
+
+#### 能力变化
+- Pandas:从 DataFrame 基础 → 字符串/缺失值/分箱 → groupby/agg/transform → merge/concat/filter → 综合管道
+- 建立了「读取→清洗→关联→分析→报告」的完整数据岗工作流
+- 弱点清单从 49 条增长到 54 条,但核心弱点 #42/#48/#49/#50 已克服
+
+#### 暴露的问题(Week 4 要改进)
+1. **Notebook 副作用管理**:综合题中 df 的共享状态需要更清晰的隔离策略
+2. **综合题逐项执行**:题10 的跳过阶段说明需要更严格的步骤检查
+
+### Week 4 预告
+- SQL 字符串函数 + 日期处理
+- SQL 窗口函数(ROW_NUMBER/RANK/LEAD/LAG)
+- 统计基础 + 假设检验
+- 这是从「工具操作」到「分析思维」的过渡
+
+### Day 17 预告
+- SQL 字符串函数:UPPER/LOWER/LENGTH/REPLACE/SUBSTR/CONCAT
+- 理解字符串函数在数据清洗中的高频场景
+
+---
+
+### Git Push
+```bash
+cd "C:\Users\69261\Desktop\data-skills-learning"
+git add week03/day16_practice.ipynb week03/day16_exercises.ipynb week03/notes.md
+git commit -m "feat(week03): add Day 16 Week 3 review and assessment
+
+- Add day16_practice.ipynb: cheat sheets + weakness review + integrated scenario
+- Add day16_exercises.ipynb: 10 mixed problems, 8/10 correct
+- All weaknesses #42/#46/#47/#48/#49/#50 successfully defended
+- Add #53 notebook side effects, #54 step-by-step execution for complex tasks"
+git push origin main
+```
