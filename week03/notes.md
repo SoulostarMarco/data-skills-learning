@@ -756,3 +756,102 @@ git commit -m "feat(week03): add Day 16 Week 3 review and assessment
 - Add #53 notebook side effects, #54 step-by-step execution for complex tasks"
 git push origin main
 ```
+
+---
+
+## Day 17: SQL 字符串函数与日期处理
+
+### 今日完成
+- 跟练:UPPER/LOWER/TRIM/LENGTH/SUBSTR/REPLACE/CONCAT/LIKE/ILIKE + STRFTIME/EXTRACT/DATE_DIFF/DATE_TRUNC
+- 完成 10 道 SQL 练习题,9 道完全正确(1-9),1 道未尝试(10)
+- 正确率约 90%(严格标准),是至今最高的一次
+
+### 学到的关键点
+
+**SQL 字符串函数速查**
+| 函数 | 作用 | 示例 |
+|------|------|------|
+| `UPPER` | 转大写 | `UPPER(country)` |
+| `LOWER` | 转小写 | `LOWER(email)` |
+| `TRIM` | 去两端空格 | `TRIM(col)` |
+| `LENGTH` | 长度 | `LENGTH(product)` |
+| `SUBSTR` | 子串(从1开始) | `SUBSTR(order_id, 2, 10)` |
+| `REPLACE` | 替换 | `REPLACE(country, 'US', 'USA')` |
+| `CONCAT` | 拼接 | `CONCAT(a, '-', b)` |
+| `||` | 拼接简写 | `a || '_' || b` |
+| `LIKE` | 模糊匹配 | `product LIKE '%Phone%'` |
+| `ILIKE` | 不区分大小写匹配 | `product ILIKE '%phone%'` |
+
+**SQL 日期函数速查**
+| 函数 | 作用 | 示例 |
+|------|------|------|
+| `STRFTIME` | 格式化 | `STRFTIME('%Y-%m', date)` |
+| `EXTRACT` | 提取日期部分 | `EXTRACT(YEAR FROM date)` |
+| `DATE_TRUNC` | 截断到粒度 | `DATE_TRUNC('month', date)` |
+| `DATE_DIFF` | 日期间隔 | `DATE_DIFF('day', d1, d2)` |
+| `CURRENT_DATE` | 当前日期 | `CURRENT_DATE` |
+
+**SQL ↔ Python 对照表(字符串/日期)**
+| 操作 | SQL | Python |
+|------|-----|--------|
+| 转大写 | `UPPER(col)` | `df['col'].str.upper()` |
+| 转小写 | `LOWER(col)` | `df['col'].str.lower()` |
+| 去空格 | `TRIM(col)` | `df['col'].str.strip()` |
+| 长度 | `LENGTH(col)` | `df['col'].str.len()` |
+| 子串 | `SUBSTR(col, 2, 3)` | `df['col'].str[1:4]` |
+| 替换 | `REPLACE(col, 'a', 'b')` | `df['col'].str.replace('a', 'b')` |
+| 拼接 | `CONCAT(a, '-', b)` | `df['a'] + '-' + df['b']` |
+| 模糊匹配 | `col LIKE '%x%'` | `df['col'].str.contains('x')` |
+| 年月提取 | `STRFTIME('%Y-%m', date)` | `df['date'].dt.strftime('%Y-%m')` |
+| 年提取 | `EXTRACT(YEAR FROM date)` | `df['date'].dt.year` |
+| 日期差 | `DATE_DIFF('day', d1, d2)` | `(d2 - d1).days` |
+
+**CTE (Common Table Expression)**
+```sql
+WITH 临时表名 AS (
+  SELECT ... FROM ...
+)
+SELECT * FROM 临时表名;
+```
+- CTE = 临时命名子查询,把复杂查询拆成可读的小块
+- 同一个子查询可以复用多次
+- 类比 Python: `clean_data = df.copy()` → `result = clean_data.groupby(...)`
+- 是 SQL 进阶必备,窗口函数前必须掌握
+
+### 卡住/印象深的题
+- **题 10**:完全没懂 CTE 是什么——#55 新弱点,需要专门练习
+
+### 做得好的
+- **9/10 完全正确**:是至今最高正确率
+- **字符串函数全部掌握**:大小写、去空格、子串、替换、拼接、模糊匹配无一错误
+- **日期函数全部掌握**:格式化、提取、日期差、截断无一错误
+- **模糊匹配**:LIKE/ILIKE 区分清楚,LIKE 大小写敏感,ILIKE 不区分
+- **日期差 + ABS**:题6 的 `ABS(DATE_DIFF(...))` 找最近日期思路正确
+- **CASE 嵌套**:题9 的季度判断 CASE WHEN 嵌套正确
+
+### 暴露的问题
+1. **#55 CTE 未理解**:题10 的 `WITH ... AS` 语法不熟悉。这是 SQL 进阶必备,需要专门练习。
+
+### 难度反馈
+- 题1-9 难度贴合,用户掌握扎实
+- 题10 的 CTE 是首次出现,用户反馈"完全没懂",说明 CTE 需要单独讲解
+- 建议后续 Day 18 窗口函数前先补充 CTE 练习
+
+### Day 18 预告
+- SQL 窗口函数:ROW_NUMBER/RANK/LEAD/LAG
+- 窗口函数是 SQL 最强大的分析功能,必须掌握 CTE 后才能熟练运用
+- 会先补充 CTE 练习,再进入窗口函数
+
+---
+
+### Git Push
+```bash
+cd "C:\Users\69261\Desktop\data-skills-learning"
+git add week03/day17_practice.ipynb week03/day17_exercises.ipynb week03/notes.md
+git commit -m "feat(week03): add Day 17 SQL string and date functions
+
+- Add day17_practice.ipynb: UPPER/LOWER/TRIM/SUBSTR/REPLACE/CONCAT/STRFTIME/EXTRACT/DATE_DIFF
+- Add day17_exercises.ipynb: 10 SQL problems, 9/10 correct
+- CTE concept needs reinforcement (#55), all other string/date functions mastered"
+git push origin main
+```
