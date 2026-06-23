@@ -855,3 +855,107 @@ git commit -m "feat(week03): add Day 17 SQL string and date functions
 - CTE concept needs reinforcement (#55), all other string/date functions mastered"
 git push origin main
 ```
+
+---
+
+## Day 18: SQL 窗口函数 —— CTE + ROW_NUMBER/RANK/LEAD/LAG
+
+### 今日完成
+- 跟练:CTE 临时命名子查询、ROW_NUMBER 组内排名、RANK/DENSE_RANK 并列处理、LEAD/LAG 环比、SUM OVER 累计占比、NTILE 分箱
+- 完成 10 道 SQL 练习题,7 道完全正确(1/2/3/4/8),3 道有小问题(5/7/10)
+- 正确率约 70%(严格标准) / 90%(宽松标准)
+
+### 学到的关键点
+
+**CTE 核心理解**
+- CTE = 临时命名子查询 = SQL 的「中间变量」
+- 语法:`WITH name AS (SELECT ...) SELECT * FROM name;`
+- 多个 CTE 用逗号分隔:`WITH a AS (...), b AS (...)`
+- 类比 Python: `clean_data = df.copy()` → `result = clean_data.groupby(...)`
+- CTE 可以引用其他 CTE（按顺序）
+- CTE 只在当前查询有效，不会持久化到数据库
+
+**窗口函数核心理解**
+- 窗口函数 = 聚合函数 + 不改变行数
+- `GROUP BY` 每组变一行（降维），窗口函数每行保留（不变维）
+- 语法:`函数() OVER (PARTITION BY 分组列 ORDER BY 排序列)`
+
+**窗口函数对比**
+| 函数 | 并列处理 | 序号跳跃 | 示例(100,100,90) | 用途 |
+|------|----------|----------|------------------|------|
+| ROW_NUMBER | 随机分配 | 无 | 1,2,3 | 取 TOP N |
+| RANK | 同排名 | 有(1,1,3) | 1,1,3 | 排名（有跳号） |
+| DENSE_RANK | 同排名 | 无(1,1,2) | 1,1,2 | 排名（无跳号） |
+| LEAD | — | — | — | 取后 N 行 |
+| LAG | — | — | — | 取前 N 行 |
+| SUM OVER | — | — | — | 组内累计/占比 |
+| NTILE | — | — | — | 等分箱 |
+
+**LEAD/LAG 环比**
+```sql
+LAG(total_sales, 1) OVER (ORDER BY ym) AS prev_month
+-- 第一行 LAG 返回 NULL,用 COALESCE(LAG(...), 0) 处理
+```
+
+**SUM OVER 累计**
+```sql
+SUM(daily_sales) OVER (ORDER BY date) AS running_total  -- 累计求和
+SUM(total) OVER (PARTITION BY country) AS country_total   -- 组内总和
+```
+
+**NTILE 分箱**
+```sql
+NTILE(3) OVER (ORDER BY col) AS score  -- 等分 3 箱,1=低,2=中,3=高
+```
+
+### 卡住/印象深的题
+- **题 5**:第一行 LAG 返回 NULL,`COALESCE` 只处理了 `prev_month` 列,但 `change` 列仍用原始 LAG 计算导致 NULL——**COALESCE 要用在计算表达式中,不只是展示列**(#56)
+- **题 7**:RANK 是在订单粒度排名,不是客户粒度——**JOIN 后要考虑粒度聚合**(#21 复发)
+- **题 10**:RFM 的 recency 为负数(今天选在订单日期前)——#51 日期范围确认复发,NTILE 对负数的分箱逻辑混乱
+
+### 概念顿悟
+- **CTE 彻底理解**:从"完全没懂"到"熟练掌握多 CTE 串联",Day 18 是 CTE 的 breakthrough
+- **窗口函数不改行数**:这是与 GROUP BY 的本质区别,每行都可以附加一个窗口统计值
+- **ROW_NUMBER vs RANK vs DENSE_RANK 的直观对比**:题4 的三列对比非常清晰,ROW_NUMBER 随机分配并列,RANK 跳号,DENSE_RANK 连续
+- **LAG 12 用于同比**:LAG 的第二个参数是偏移量,LAG 12 就是去年同期
+- **SUM OVER 不带 PARTITION BY = 全局累计**:`SUM(x) OVER (ORDER BY date)` 是累计求和,`SUM(x) OVER (PARTITION BY g)` 是组内求和
+- **NTILE 是等分箱**:每个箱的行数大致相等,不是按数值范围分箱(那是 CASE WHEN 或 pd.cut)
+
+### 做得好的
+- **CTE 掌握扎实**:题1/2/3/8/10 的 CTE 结构正确,多 CTE 串联熟练
+- **ROW_NUMBER 取 TOP N**:题3 的 `WHERE rn = 1` 筛选正确,是窗口函数最常见的用法
+- **三种排名对比**:题4 的并列处理观察非常清晰,理解了三种排名的区别
+- **LEAD/LAG 环比**:题5 的月度环比计算正确,COALESCE 处理 NULL
+- **SUM OVER 累计**:题8 的 running_total 正确,找到首次突破 100000 的日期
+- **NTILE 分箱**:题10 的 NTILE(3) 用法正确,RFM 框架完整
+
+### 暴露的问题
+1. **#56 COALESCE 要用于计算表达式**:题5 的 `COALESCE(LAG(...), 0)` 只给了展示列,但 `change` 列仍用原始 LAG 计算。应该把 COALESCE 的结果存为列,再用该列计算 change。
+2. **#21 粒度意识复发**:题7 的 RANK 是在订单粒度排名,不是客户粒度。应该先 `GROUP BY customer_id` 聚合客户总消费,再 RANK。
+3. **#51 日期范围确认复发**:题10 的 RFM 中 today=2024-06-01 在订单日期之前,导致 recency 为负数。应该用 `MAX(order_date)` 或选在所有日期之后的今天。
+
+### 难度反馈
+- 题1-4 基础窗口函数难度贴合,用户掌握扎实
+- 题8 running_total 是窗口函数的经典应用,用户掌握良好
+- 题10 RFM 综合题框架正确,但日期选择导致 recency 为负,需要强调数据时间范围确认
+- CTE 从"完全没懂"到"熟练使用",说明 Day 17 的铺垫 + Day 18 的练习有效
+
+### Day 19 预告
+- 统计基础:描述统计、分布、中心极限定理
+- 从 SQL 工具操作转向统计分析思维
+- 用 Python (NumPy/Pandas/Matplotlib) 做统计分析和可视化
+
+---
+
+### Git Push
+```bash
+cd "C:\Users\69261\Desktop\data-skills-learning"
+git add week03/day18_practice.ipynb week03/day18_exercises.ipynb week03/notes.md
+git commit -m "feat(week03): add Day 18 SQL window functions
+
+- Add day18_practice.ipynb: CTE + ROW_NUMBER/RANK/LEAD/LAG/SUM OVER/NTILE
+- Add day18_exercises.ipynb: 10 SQL problems, 7/10 correct
+- CTE mastered from scratch, weakness #55 resolved
+- Fix #56 COALESCE in expressions, #21 granularity, #51 date range"
+git push origin main
+```
